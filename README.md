@@ -1,6 +1,5 @@
-# Template for npm/webpack based javascript project
+# Experiments with dome projection in WebGL
 
-My template for quickly getting started with npm/webpack based project.
 
 ## Getting started
 

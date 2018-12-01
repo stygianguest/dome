@@ -1,7 +1,7 @@
 {
-  "name": "webpack_template",
-  "version": "1.0.0",
-  "description": "Basic template",
+  "name": "dome",
+  "version": "0.0.1",
+  "description": "Dome display experiments",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "webpack --progress -p",
@@ -9,7 +9,9 @@
   },
   "author": "Gideon Smeding <gideon.smeding@gmail.com>",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "gl-matrix": "^2.8.1"
+  },
   "devDependencies": {
     "babel-core": "^6.26.3",
     "babel-loader": "^7.1.5",
