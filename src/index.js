@@ -1,4 +1,4 @@
-'unse strict';
+'use strict';
 
 var glMatrix = require('gl-matrix');
 let mat4 = glMatrix.mat4; //FIXME: how are we supposed to do this?
@@ -8,8 +8,71 @@ var viewRotationX = 0.0;
 var viewRotationY = 0.0;
 
 const canvas = document.querySelector('#glcanvas');
+let mesh = uvSphere(24, 48);
+console.log(mesh)
 cameraControls(canvas);
 main(canvas);
+
+function uvSphere(numLatitudes, numLongitudes) { // actually hemisphere
+
+    var vertices = [];//Array(0.0, 1 + (numLatitudes-1) * numLongitudes);
+
+    for (let j = 0; j < numLatitudes; ++j) {
+        let latitude = j * 0.5*Math.PI/numLatitudes;
+        let sinLatitude = Math.sin(latitude);
+        let cosLatitude = Math.cos(latitude);
+
+        for (let i = 0; i < numLongitudes; ++i) {
+            let longitude = i * 2.0*Math.PI/numLongitudes;
+
+            vertices = vertices.concat([
+                cosLatitude * Math.cos(longitude),
+                cosLatitude * Math.sin(longitude),
+                sinLatitude]);
+        }
+    }
+
+    // add pole
+    vertices = vertices.concat([0., 0., 1.]);
+
+    function triangulateQuadIndices(bl, br, tl, tr) {
+        return [bl, br, tl,
+                tl, br, tr];
+    }
+
+    var indices = [];//Array(0, numLatitudes * numLongitudes * 2 * 3);
+
+    for (let j = 0; j < numLatitudes-1; ++j) {
+        for (let i = 0; i < numLongitudes-1; ++i) {
+            indices = indices.concat(triangulateQuadIndices(
+                i   +    j  * numLongitudes,
+                i+1 +    j  * numLongitudes,
+                i   + (1+j) * numLongitudes,
+                i+1 + (1+j) * numLongitudes));
+        }
+
+        // wrap around longitudes
+        indices = indices.concat(triangulateQuadIndices(
+            numLongitudes-1 +    j  * numLongitudes,
+            0               +    j  * numLongitudes,
+            numLongitudes-1 + (1+j) * numLongitudes,
+            0               + (1+j) * numLongitudes));
+    }
+
+    // add triangles at the pole
+    for (let i = 0; i < numLongitudes-1; ++i) {
+        indices = indices.concat([
+            i   + (numLatitudes-1) * numLongitudes,
+            i+1 + (numLatitudes-1) * numLongitudes,
+            vertices.length/3 - 1 /* pole */]);
+    }
+    indices = indices.concat([
+        numLongitudes-1 + (numLatitudes-1) * numLongitudes,
+        0               + (numLatitudes-1) * numLongitudes,
+        vertices.length/3 - 1 /* pole */]);
+
+    return { vertices: vertices, indices: indices };
+}
 
 // drag controls our view of the dome
 function cameraControls(canvas) {
@@ -50,13 +113,13 @@ function main(canvas) {
 
   const vsSource = `
     attribute vec4 aVertexPosition;
-    attribute vec4 aVertexColor;
+    //attribute vec4 aVertexColor;
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
     varying lowp vec4 vColor;
     void main(void) {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-      vColor = aVertexColor;
+      vColor = vec4(1.);//aVertexColor;
     }
   `;
 
@@ -81,7 +144,7 @@ function main(canvas) {
     program: shaderProgram,
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
-      vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
+      //vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
@@ -108,6 +171,7 @@ function main(canvas) {
   requestAnimationFrame(render);
 }
 
+
 //
 // initBuffers
 //
@@ -127,49 +191,49 @@ function initBuffers(gl) {
 
   // Now create an array of positions for the cube.
 
-  const positions = [
-    // Front face
-    -1.0, -1.0,  1.0,
-     1.0, -1.0,  1.0,
-     1.0,  1.0,  1.0,
-    -1.0,  1.0,  1.0,
+  //const positions = [
+  //  // Front face
+  //  -1.0, -1.0,  1.0,
+  //   1.0, -1.0,  1.0,
+  //   1.0,  1.0,  1.0,
+  //  -1.0,  1.0,  1.0,
 
-    // Back face
-    -1.0, -1.0, -1.0,
-    -1.0,  1.0, -1.0,
-     1.0,  1.0, -1.0,
-     1.0, -1.0, -1.0,
+  //  // Back face
+  //  -1.0, -1.0, -1.0,
+  //  -1.0,  1.0, -1.0,
+  //   1.0,  1.0, -1.0,
+  //   1.0, -1.0, -1.0,
 
-    // Top face
-    -1.0,  1.0, -1.0,
-    -1.0,  1.0,  1.0,
-     1.0,  1.0,  1.0,
-     1.0,  1.0, -1.0,
+  //  // Top face
+  //  -1.0,  1.0, -1.0,
+  //  -1.0,  1.0,  1.0,
+  //   1.0,  1.0,  1.0,
+  //   1.0,  1.0, -1.0,
 
-    // Bottom face
-    -1.0, -1.0, -1.0,
-     1.0, -1.0, -1.0,
-     1.0, -1.0,  1.0,
-    -1.0, -1.0,  1.0,
+  //  // Bottom face
+  //  -1.0, -1.0, -1.0,
+  //   1.0, -1.0, -1.0,
+  //   1.0, -1.0,  1.0,
+  //  -1.0, -1.0,  1.0,
 
-    // Right face
-     1.0, -1.0, -1.0,
-     1.0,  1.0, -1.0,
-     1.0,  1.0,  1.0,
-     1.0, -1.0,  1.0,
+  //  // Right face
+  //   1.0, -1.0, -1.0,
+  //   1.0,  1.0, -1.0,
+  //   1.0,  1.0,  1.0,
+  //   1.0, -1.0,  1.0,
 
-    // Left face
-    -1.0, -1.0, -1.0,
-    -1.0, -1.0,  1.0,
-    -1.0,  1.0,  1.0,
-    -1.0,  1.0, -1.0,
-  ];
+  //  // Left face
+  //  -1.0, -1.0, -1.0,
+  //  -1.0, -1.0,  1.0,
+  //  -1.0,  1.0,  1.0,
+  //  -1.0,  1.0, -1.0,
+  //];
 
   // Now pass the list of positions into WebGL to build the
   // shape. We do this by creating a Float32Array from the
   // JavaScript array, then use it to fill the current buffer.
 
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.vertices), gl.STATIC_DRAW);
 
   // Now set up the colors for the faces. We'll use solid colors
   // for each face.
@@ -194,9 +258,9 @@ function initBuffers(gl) {
     colors = colors.concat(c, c, c, c);
   }
 
-  const colorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+  //const colorBuffer = gl.createBuffer();
+  //gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  //gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
 
   // Build the element array buffer; this specifies the indices
   // into the vertex arrays for each face's vertices.
@@ -208,23 +272,23 @@ function initBuffers(gl) {
   // indices into the vertex array to specify each triangle's
   // position.
 
-  const indices = [
-    0,  1,  2,      0,  2,  3,    // front
-    4,  5,  6,      4,  6,  7,    // back
-    8,  9,  10,     8,  10, 11,   // top
-    12, 13, 14,     12, 14, 15,   // bottom
-    16, 17, 18,     16, 18, 19,   // right
-    20, 21, 22,     20, 22, 23,   // left
-  ];
+  //const indices = [
+  //  0,  1,  2,      0,  2,  3,    // front
+  //  4,  5,  6,      4,  6,  7,    // back
+  //  8,  9,  10,     8,  10, 11,   // top
+  //  12, 13, 14,     12, 14, 15,   // bottom
+  //  16, 17, 18,     16, 18, 19,   // right
+  //  20, 21, 22,     20, 22, 23,   // left
+  //];
 
   // Now send the element array to GL
 
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
-      new Uint16Array(indices), gl.STATIC_DRAW);
+      new Uint16Array(mesh.indices), gl.STATIC_DRAW);
 
   return {
     position: positionBuffer,
-    color: colorBuffer,
+    //color: colorBuffer,
     indices: indexBuffer,
   };
 }
@@ -272,7 +336,7 @@ function drawScene(gl, programInfo, buffers, deltaTime) {
 
   mat4.translate(modelViewMatrix,     // destination matrix
                  modelViewMatrix,     // matrix to translate
-                 [-0.0, 0.0, -6.0]);  // amount to translate
+                 [-0.0, 0.0, -3.0]);  // amount to translate
   mat4.rotate(modelViewMatrix,  // destination matrix
               modelViewMatrix,  // matrix to rotate
               viewRotationY,     // amount to rotate in radians
@@ -304,23 +368,23 @@ function drawScene(gl, programInfo, buffers, deltaTime) {
 
   // Tell WebGL how to pull out the colors from the color buffer
   // into the vertexColor attribute.
-  {
-    const numComponents = 4;
-    const type = gl.FLOAT;
-    const normalize = false;
-    const stride = 0;
-    const offset = 0;
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
-    gl.vertexAttribPointer(
-        programInfo.attribLocations.vertexColor,
-        numComponents,
-        type,
-        normalize,
-        stride,
-        offset);
-    gl.enableVertexAttribArray(
-        programInfo.attribLocations.vertexColor);
-  }
+  //{
+  //  const numComponents = 4;
+  //  const type = gl.FLOAT;
+  //  const normalize = false;
+  //  const stride = 0;
+  //  const offset = 0;
+  //  gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+  //  gl.vertexAttribPointer(
+  //      programInfo.attribLocations.vertexColor,
+  //      numComponents,
+  //      type,
+  //      normalize,
+  //      stride,
+  //      offset);
+  //  gl.enableVertexAttribArray(
+  //      programInfo.attribLocations.vertexColor);
+  //}
 
   // Tell WebGL which indices to use to index the vertices
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
@@ -341,7 +405,7 @@ function drawScene(gl, programInfo, buffers, deltaTime) {
       modelViewMatrix);
 
   {
-    const vertexCount = 36;
+    const vertexCount = mesh.indices.length;
     const type = gl.UNSIGNED_SHORT;
     const offset = 0;
     gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
