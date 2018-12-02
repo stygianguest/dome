@@ -1,21 +1,24 @@
 'use strict';
 
-var glMatrix = require('gl-matrix');
-let mat4 = glMatrix.mat4; //FIXME: how are we supposed to do this?
+//import cubetexture from './images/cubetexture.png';
+import cubetexture from './images/death_star.png';
+import {mat4, mat3, vec2} from 'gl-matrix';
 
 let rotationSensitivity = 40.0; // number of pixels to move one radian
 var viewRotationX = 0.0;
 var viewRotationY = 0.0;
 
+var textureOffset = vec2.fromValues(0.5 * (1.0 - 480. / 640.), 0.0);
+var textureScale = vec2.fromValues(480. / 640., 1.0);
+
 const canvas = document.querySelector('#glcanvas');
 let mesh = uvSphere(24, 48);
-console.log(mesh)
 cameraControls(canvas);
 main(canvas);
 
 function uvSphere(numLatitudes, numLongitudes) { // actually hemisphere
 
-    var vertices = [];//Array(0.0, 1 + (numLatitudes-1) * numLongitudes);
+    var vertices = [];
 
     for (let j = 0; j < numLatitudes; ++j) {
         let latitude = j * 0.5*Math.PI/numLatitudes;
@@ -40,7 +43,7 @@ function uvSphere(numLatitudes, numLongitudes) { // actually hemisphere
                 tl, br, tr];
     }
 
-    var indices = [];//Array(0, numLatitudes * numLongitudes * 2 * 3);
+    var indices = [];
 
     for (let j = 0; j < numLatitudes-1; ++j) {
         for (let i = 0; i < numLongitudes-1; ++i) {
@@ -113,22 +116,28 @@ function main(canvas) {
 
   const vsSource = `
     attribute vec4 aVertexPosition;
-    //attribute vec4 aVertexColor;
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
-    varying lowp vec4 vColor;
+
+    varying highp vec2 uv;
+    uniform mat3 uTextureMatrix;
+
     void main(void) {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-      vColor = vec4(1.);//aVertexColor;
+      uv = 0.5 + 0.5*aVertexPosition.xy;
+      uv = vec2(uTextureMatrix * vec3(uv, 1.));
     }
   `;
 
   // Fragment shader program
 
   const fsSource = `
-    varying lowp vec4 vColor;
+    varying highp vec2 uv;
+    uniform sampler2D uSampler;
+
     void main(void) {
-      gl_FragColor = vColor;
+      //gl_FragColor = vec4(0., uv.y, 0., 1.);
+      gl_FragColor = texture2D(uSampler, uv);
     }
   `;
 
@@ -149,12 +158,16 @@ function main(canvas) {
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
       modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+      uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
+      textureMatrix: gl.getUniformLocation(shaderProgram, 'uTextureMatrix'),
     },
   };
 
   // Here's where we call the routine that builds all the
   // objects we'll be drawing.
   const buffers = initBuffers(gl);
+
+  const texture = loadTexture(gl, cubetexture);
 
   var then = 0;
 
@@ -164,7 +177,7 @@ function main(canvas) {
     const deltaTime = now - then;
     then = now;
 
-    drawScene(gl, programInfo, buffers, deltaTime);
+    drawScene(gl, programInfo, buffers, texture, deltaTime);
 
     requestAnimationFrame(render);
   }
@@ -296,7 +309,7 @@ function initBuffers(gl) {
 //
 // Draw the scene.
 //
-function drawScene(gl, programInfo, buffers, deltaTime) {
+function drawScene(gl, programInfo, buffers, texture, deltaTime) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
   gl.clearDepth(1.0);                 // Clear everything
   gl.enable(gl.DEPTH_TEST);           // Enable depth testing
@@ -346,6 +359,11 @@ function drawScene(gl, programInfo, buffers, deltaTime) {
               viewRotationX * .7,// amount to rotate in radians
               [0, 1, 0]);       // axis to rotate around (X)
 
+  const textureMatrix = mat3.create();
+  mat3.translate(textureMatrix, textureMatrix, textureOffset);
+  mat3.scale(textureMatrix, textureMatrix, textureScale);
+
+
   // Tell WebGL how to pull out the positions from the position
   // buffer into the vertexPosition attribute
   {
@@ -389,6 +407,17 @@ function drawScene(gl, programInfo, buffers, deltaTime) {
   // Tell WebGL which indices to use to index the vertices
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
+
+  // Tell WebGL we want to affect texture unit 0
+  gl.activeTexture(gl.TEXTURE0);
+
+  // Bind the texture to texture unit 0
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+  // Tell the shader we bound the texture to texture unit 0
+  gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+
   // Tell WebGL to use our program when drawing
 
   gl.useProgram(programInfo.program);
@@ -403,6 +432,11 @@ function drawScene(gl, programInfo, buffers, deltaTime) {
       programInfo.uniformLocations.modelViewMatrix,
       false,
       modelViewMatrix);
+
+  gl.uniformMatrix3fv(
+      programInfo.uniformLocations.textureMatrix,
+      false,
+      textureMatrix);
 
   {
     const vertexCount = mesh.indices.length;
@@ -465,4 +499,62 @@ function loadShader(gl, type, source) {
   }
 
   return shader;
+}
+
+//
+// Initialize a texture and load an image.
+// When the image finished loading copy it into the texture.
+//
+function loadTexture(gl, url) {
+  const texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+  // Because images have to be download over the internet
+  // they might take a moment until they are ready.
+  // Until then put a single pixel in the texture so we can
+  // use it immediately. When the image has finished downloading
+  // we'll update the texture with the contents of the image.
+  const level = 0;
+  const internalFormat = gl.RGBA;
+  const width = 1;
+  const height = 1;
+  const border = 0;
+  const srcFormat = gl.RGBA;
+  const srcType = gl.UNSIGNED_BYTE;
+  const pixel = new Uint8Array([0, 0, 255, 255]);  // opaque blue
+  gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
+                width, height, border, srcFormat, srcType,
+                pixel);
+
+  const image = new Image();
+  image.onload = function() {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
+                  srcFormat, srcType, image);
+
+    // WebGL1 has different requirements for power of 2 images
+    // vs non power of 2 images so check if the image is a
+    // power of 2 in both dimensions.
+    //if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+    //   // Yes, it's a power of 2. Generate mips.
+    //   gl.generateMipmap(gl.TEXTURE_2D);
+    //} else {
+    //   // No, it's not a power of 2. Turn of mips and set
+    //   // wrapping to clamp to edge
+    //   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    //   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    //   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    //}
+
+       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  };
+  image.src = url;
+
+  return texture;
+}
+
+function isPowerOf2(value) {
+  return (value & (value - 1)) == 0;
 }
