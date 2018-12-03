@@ -12,11 +12,13 @@ var textureOffset = vec2.fromValues(0.5 * (1.0 - 480. / 640.), 0.0);
 var textureScale = vec2.fromValues(480. / 640., 1.0);
 
 const canvas = document.querySelector('#glcanvas');
-let mesh = uvSphere(24, 48);
+let mesh = uvSphere(24, 64);
 cameraControls(canvas);
 main(canvas);
 
-function uvSphere(numLatitudes, numLongitudes) { // actually hemisphere
+function uvSphere(numLatitudes, numLongitudes) {
+    //TODO: actually hemisphere, rename!
+    //TODO: we probably should generate an icosphere
 
     var vertices = [];
 
@@ -103,7 +105,7 @@ function cameraControls(canvas) {
 // Start here
 //
 function main(canvas) {
-  const gl = canvas.getContext('webgl');
+  const gl = canvas.getContext('webgl2');
 
   // If we don't have a GL context, give up now
 
@@ -114,30 +116,48 @@ function main(canvas) {
 
   // Vertex shader program
 
-  const vsSource = `
-    attribute vec4 aVertexPosition;
+  const vsSource = `#version 300 es
+
+    in vec4 aVertexPosition;
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
 
-    varying highp vec2 uv;
+    out highp vec2 uv;
     uniform mat3 uTextureMatrix;
+
+    float pi = 3.1415927410125732421875;
 
     void main(void) {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-      uv = 0.5 + 0.5*aVertexPosition.xy;
+
+      //TODO: ugh, so much trigonometry is gonna be slow,
+      //      guess we ought to precompute the uv coordinates
+      float phi = atan(sqrt(aVertexPosition.x*aVertexPosition.x+aVertexPosition.y*aVertexPosition.y), aVertexPosition.z); // latitude
+      float lambda = atan(aVertexPosition.y, aVertexPosition.x); // longitude
+
+      //uv = vec2(2.0 / pi, 1.0 / pi) * vec2(phi, lambda);// + vec2(0.5);
+      uv = vec2((2.0 / pi) * phi * cos(lambda),
+                (2.0 / pi) * phi * sin(lambda));
+      //uv = aVertexPosition.xy;
+
+      uv = 0.5 + 0.5 * uv;
       uv = vec2(uTextureMatrix * vec3(uv, 1.));
     }
   `;
 
   // Fragment shader program
 
-  const fsSource = `
-    varying highp vec2 uv;
+  const fsSource = `#version 300 es
+
+    in highp vec2 uv;
     uniform sampler2D uSampler;
 
+    out lowp vec4 color;
+
     void main(void) {
-      //gl_FragColor = vec4(0., uv.y, 0., 1.);
-      gl_FragColor = texture2D(uSampler, uv);
+      //color = vec4(uv, 0., 1.);
+      //color = vec4(0., uv.x, 0., 1.);
+      color = texture(uSampler, uv);
     }
   `;
 
