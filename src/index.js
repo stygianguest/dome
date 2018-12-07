@@ -150,27 +150,11 @@ function main(canvas) {
 
     void main(void) {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-
-      //TODO: ugh, so much trigonometry is gonna be slow,
-      //      guess we ought to precompute the uv coordinates
-      //float phi = atan(sqrt(aVertexPosition.x*aVertexPosition.x+aVertexPosition.y*aVertexPosition.y), aVertexPosition.z); // latitude
-      //float lambda = atan(aVertexPosition.y, aVertexPosition.x); // longitude
-
-      ////uv = vec2(2.0 / pi, 1.0 / pi) * vec2(phi, lambda);// + vec2(0.5);
-      //uv = vec2((2.0 / pi) * phi * cos(lambda),
-      //          (2.0 / pi) * phi * sin(lambda));
-      ////uv = aVertexPosition.xy;
-      //uv = uv.yx;
-
-
-      //uv = 0.5 + 0.5 * uv;
-      //uv = aUV;
       uv = vec2(uTextureMatrix * vec3(aUV, 1.));
     }
   `;
 
   // Fragment shader program
-
   const fsSource = `#version 300 es
 
     in highp vec2 uv;
@@ -179,20 +163,15 @@ function main(canvas) {
     out lowp vec4 color;
 
     void main(void) {
-      //color = vec4(uv, 0., 1.);
-      //color = vec4(0., uv.x, 0., 1.);
       color = texture(uSampler, uv);
     }
   `;
 
-  // Initialize a shader program; this is where all the lighting
-  // for the vertices and so forth is established.
+  // initialize the shader
   const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
 
   // Collect all the info needed to use the shader program.
-  // Look up which attributes our shader program is using
-  // for aVertexPosition, aVevrtexColor and also
-  // look up uniform locations.
+  // Look up which attributes and uniforms our shader program is using
   const programInfo = {
     program: shaderProgram,
     attribLocations: {
@@ -233,9 +212,6 @@ function main(canvas) {
 //
 // initBuffers
 //
-// Initialize the buffers we'll need. For this demo, we just
-// have one object -- a simple three-dimensional cube.
-//
 function initBuffers(gl) {
 
   // Create a buffer for the cube's vertex positions.
@@ -248,44 +224,6 @@ function initBuffers(gl) {
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
 
   // Now create an array of positions for the cube.
-
-  //const positions = [
-  //  // Front face
-  //  -1.0, -1.0,  1.0,
-  //   1.0, -1.0,  1.0,
-  //   1.0,  1.0,  1.0,
-  //  -1.0,  1.0,  1.0,
-
-  //  // Back face
-  //  -1.0, -1.0, -1.0,
-  //  -1.0,  1.0, -1.0,
-  //   1.0,  1.0, -1.0,
-  //   1.0, -1.0, -1.0,
-
-  //  // Top face
-  //  -1.0,  1.0, -1.0,
-  //  -1.0,  1.0,  1.0,
-  //   1.0,  1.0,  1.0,
-  //   1.0,  1.0, -1.0,
-
-  //  // Bottom face
-  //  -1.0, -1.0, -1.0,
-  //   1.0, -1.0, -1.0,
-  //   1.0, -1.0,  1.0,
-  //  -1.0, -1.0,  1.0,
-
-  //  // Right face
-  //   1.0, -1.0, -1.0,
-  //   1.0,  1.0, -1.0,
-  //   1.0,  1.0,  1.0,
-  //   1.0, -1.0,  1.0,
-
-  //  // Left face
-  //  -1.0, -1.0, -1.0,
-  //  -1.0, -1.0,  1.0,
-  //  -1.0,  1.0,  1.0,
-  //  -1.0,  1.0, -1.0,
-  //];
 
   // Now pass the list of positions into WebGL to build the
   // shape. We do this by creating a Float32Array from the
@@ -330,20 +268,7 @@ function initBuffers(gl) {
   const indexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
-  // This array defines each face as two triangles, using the
-  // indices into the vertex array to specify each triangle's
-  // position.
-
-  //const indices = [
-  //  0,  1,  2,      0,  2,  3,    // front
-  //  4,  5,  6,      4,  6,  7,    // back
-  //  8,  9,  10,     8,  10, 11,   // top
-  //  12, 13, 14,     12, 14, 15,   // bottom
-  //  16, 17, 18,     16, 18, 19,   // right
-  //  20, 21, 22,     20, 22, 23,   // left
-  //];
-
-  // Now send the element array to GL
+  // Now send the index array to GL
 
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,
       new Uint16Array(mesh.indices), gl.STATIC_DRAW);
@@ -451,26 +376,6 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime) {
         programInfo.attribLocations.uvCoordinates);
   }
 
-  // Tell WebGL how to pull out the colors from the color buffer
-  // into the vertexColor attribute.
-  //{
-  //  const numComponents = 4;
-  //  const type = gl.FLOAT;
-  //  const normalize = false;
-  //  const stride = 0;
-  //  const offset = 0;
-  //  gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
-  //  gl.vertexAttribPointer(
-  //      programInfo.attribLocations.vertexColor,
-  //      numComponents,
-  //      type,
-  //      normalize,
-  //      stride,
-  //      offset);
-  //  gl.enableVertexAttribArray(
-  //      programInfo.attribLocations.vertexColor);
-  //}
-
   // Tell WebGL which indices to use to index the vertices
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
@@ -512,10 +417,6 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime) {
     gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
   }
 
-  // Update the rotation for the next draw
-
-  //viewRotationX += deltaTime;
-  //viewRotationY += deltaTime;
 }
 
 //
@@ -560,7 +461,7 @@ function loadShader(gl, type, source) {
   // See if it compiled successfully
 
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    alert('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
+    console.error('An error occurred compiling the shaders: ' + gl.getShaderInfoLog(shader));
     gl.deleteShader(shader);
     return null;
   }
@@ -599,29 +500,13 @@ function loadTexture(gl, url) {
     gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
                   srcFormat, srcType, image);
 
-    // WebGL1 has different requirements for power of 2 images
-    // vs non power of 2 images so check if the image is a
-    // power of 2 in both dimensions.
-    //if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
-    //   // Yes, it's a power of 2. Generate mips.
-    //   gl.generateMipmap(gl.TEXTURE_2D);
-    //} else {
-    //   // No, it's not a power of 2. Turn of mips and set
-    //   // wrapping to clamp to edge
-    //   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    //   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    //   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    //}
-
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   };
+
   image.src = url;
 
   return texture;
 }
 
-function isPowerOf2(value) {
-  return (value & (value - 1)) == 0;
-}
