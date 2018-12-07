@@ -1,15 +1,18 @@
 'use strict';
 
 //import cubetexture from './images/cubetexture.png';
-import cubetexture from './images/death_star.png';
+import cubetexture from './images/fisheye_grid.gif';
 import {mat4, mat3, vec2} from 'gl-matrix';
 
 let rotationSensitivity = 40.0; // number of pixels to move one radian
 var viewRotationX = 0.0;
 var viewRotationY = 0.0;
 
-var textureOffset = vec2.fromValues(0.5 * (1.0 - 480. / 640.), 0.0);
-var textureScale = vec2.fromValues(480. / 640., 1.0);
+//var textureOffset = vec2.fromValues(0.5 * (1.0 - 480. / 640.), 0.0);
+//var textureScale = vec2.fromValues(480. / 640., 1.0);
+
+var textureOffset = vec2.fromValues(0.0, 0.0);
+var textureScale = vec2.fromValues(1.0, 1.0);
 
 const canvas = document.querySelector('#glcanvas');
 let mesh = uvSphere(24, 64);
@@ -20,25 +23,41 @@ function uvSphere(numLatitudes, numLongitudes) {
     //TODO: actually hemisphere, rename!
     //TODO: we probably should generate an icosphere
 
+    let maxLatitude = 0.5 * Math.PI;
+
     var vertices = [];
+    var uvs = [];
 
     for (let j = 0; j < numLatitudes; ++j) {
-        let latitude = j * 0.5*Math.PI/numLatitudes;
+        let latitude = j * maxLatitude/numLatitudes + (0.5*Math.PI - maxLatitude);
         let sinLatitude = Math.sin(latitude);
         let cosLatitude = Math.cos(latitude);
 
         for (let i = 0; i < numLongitudes; ++i) {
             let longitude = i * 2.0*Math.PI/numLongitudes;
+            let cosLongitude = Math.cos(longitude);
+            let sinLongitude = Math.sin(longitude);
 
-            vertices = vertices.concat([
-                cosLatitude * Math.cos(longitude),
-                cosLatitude * Math.sin(longitude),
-                sinLatitude]);
+            let x = cosLatitude * cosLongitude;
+            let y = cosLatitude * sinLongitude;
+            let z = sinLatitude;
+
+            vertices = vertices.concat([x,y,z]);
+
+            // fisheye uv projection
+            let r = Math.atan2(Math.sqrt(x*x + y*y), z) / Math.PI;
+            let phi = longitude;//Math.atan2(y, x);
+
+            let u = 0.5 + r * Math.cos(phi);
+            let v = 0.5 + r * Math.sin(phi);
+
+            uvs = uvs.concat([u,v]);
         }
     }
 
     // add pole
     vertices = vertices.concat([0., 0., 1.]);
+    uvs = uvs.concat([0.5, 0.5]);
 
     function triangulateQuadIndices(bl, br, tl, tr) {
         return [bl, br, tl,
@@ -76,7 +95,7 @@ function uvSphere(numLatitudes, numLongitudes) {
         0               + (numLatitudes-1) * numLongitudes,
         vertices.length/3 - 1 /* pole */]);
 
-    return { vertices: vertices, indices: indices };
+    return { vertices: vertices, uvs: uvs, indices: indices };
 }
 
 // drag controls our view of the dome
@@ -119,6 +138,8 @@ function main(canvas) {
   const vsSource = `#version 300 es
 
     in vec4 aVertexPosition;
+    in vec2 aUV;
+
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
 
@@ -132,16 +153,19 @@ function main(canvas) {
 
       //TODO: ugh, so much trigonometry is gonna be slow,
       //      guess we ought to precompute the uv coordinates
-      float phi = atan(sqrt(aVertexPosition.x*aVertexPosition.x+aVertexPosition.y*aVertexPosition.y), aVertexPosition.z); // latitude
-      float lambda = atan(aVertexPosition.y, aVertexPosition.x); // longitude
+      //float phi = atan(sqrt(aVertexPosition.x*aVertexPosition.x+aVertexPosition.y*aVertexPosition.y), aVertexPosition.z); // latitude
+      //float lambda = atan(aVertexPosition.y, aVertexPosition.x); // longitude
 
-      //uv = vec2(2.0 / pi, 1.0 / pi) * vec2(phi, lambda);// + vec2(0.5);
-      uv = vec2((2.0 / pi) * phi * cos(lambda),
-                (2.0 / pi) * phi * sin(lambda));
-      //uv = aVertexPosition.xy;
+      ////uv = vec2(2.0 / pi, 1.0 / pi) * vec2(phi, lambda);// + vec2(0.5);
+      //uv = vec2((2.0 / pi) * phi * cos(lambda),
+      //          (2.0 / pi) * phi * sin(lambda));
+      ////uv = aVertexPosition.xy;
+      //uv = uv.yx;
 
-      uv = 0.5 + 0.5 * uv;
-      uv = vec2(uTextureMatrix * vec3(uv, 1.));
+
+      //uv = 0.5 + 0.5 * uv;
+      //uv = aUV;
+      uv = vec2(uTextureMatrix * vec3(aUV, 1.));
     }
   `;
 
@@ -173,6 +197,7 @@ function main(canvas) {
     program: shaderProgram,
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+      uvCoordinates: gl.getAttribLocation(shaderProgram, 'aUV'),
       //vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
     },
     uniformLocations: {
@@ -294,6 +319,10 @@ function initBuffers(gl) {
   //const colorBuffer = gl.createBuffer();
   //gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
   //gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+  
+  const uvBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.uvs), gl.STATIC_DRAW);
 
   // Build the element array buffer; this specifies the indices
   // into the vertex arrays for each face's vertices.
@@ -321,7 +350,7 @@ function initBuffers(gl) {
 
   return {
     position: positionBuffer,
-    //color: colorBuffer,
+    uvs: uvBuffer,
     indices: indexBuffer,
   };
 }
@@ -402,6 +431,24 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime) {
         offset);
     gl.enableVertexAttribArray(
         programInfo.attribLocations.vertexPosition);
+  }
+
+  {
+    const numComponents = 2;
+    const type = gl.FLOAT;
+    const normalize = false;
+    const stride = 0;
+    const offset = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.uvs);
+    gl.vertexAttribPointer(
+        programInfo.attribLocations.uvCoordinates,
+        numComponents,
+        type,
+        normalize,
+        stride,
+        offset);
+    gl.enableVertexAttribArray(
+        programInfo.attribLocations.uvCoordinates);
   }
 
   // Tell WebGL how to pull out the colors from the color buffer
