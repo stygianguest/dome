@@ -3,14 +3,17 @@
 //import cubetexture from './images/cubetexture.png';
 import cubetexture from './images/fisheye_grid.gif';
 import {mat4, mat3, vec2} from 'gl-matrix';
+import Parameters from './Parameters.js';
 
-let rotationSensitivity = 40.0; // number of pixels to move one radian
-var viewRotationX = 0.0;
-var viewRotationY = 0.0;
+let params = new Parameters();
+document.body.appendChild(params.element);
+
+params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
+params.float("viewRotationX", 0.0, 0.1, 0.0, 2*Math.PI);
+console.log(params.float("viewRotationY", 0.0, 0.1, 0.0, 2*Math.PI));
 
 //var textureOffset = vec2.fromValues(0.5 * (1.0 - 480. / 640.), 0.0);
 //var textureScale = vec2.fromValues(480. / 640., 1.0);
-
 var textureOffset = vec2.fromValues(0.0, 0.0);
 var textureScale = vec2.fromValues(1.0, 1.0);
 
@@ -108,10 +111,10 @@ function cameraControls(canvas) {
     }, false);
     canvas.addEventListener("mousemove", function(e){
         if (mouseIsDown) {
-            viewRotationX += (e.clientX - lastPosition.x) / rotationSensitivity;
-            viewRotationX %= Math.PI * 2;
-            viewRotationY += (e.clientY - lastPosition.y) / rotationSensitivity;
-            viewRotationY %= Math.PI * 2;
+            params.viewRotationX += (e.clientX - lastPosition.x) / params.rotationSensitivity;
+            params.viewRotationX %= Math.PI * 2;
+            params.viewRotationY += (e.clientY - lastPosition.y) / params.rotationSensitivity;
+            params.viewRotationY %= Math.PI * 2;
         }
         lastPosition = { x: e.clientX, y: e.clientY };
     }, false);
@@ -177,7 +180,6 @@ function main(canvas) {
     attribLocations: {
       vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
       uvCoordinates: gl.getAttribLocation(shaderProgram, 'aUV'),
-      //vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
     },
     uniformLocations: {
       projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
@@ -231,33 +233,6 @@ function initBuffers(gl) {
 
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.vertices), gl.STATIC_DRAW);
 
-  // Now set up the colors for the faces. We'll use solid colors
-  // for each face.
-
-  const faceColors = [
-    [1.0,  1.0,  1.0,  1.0],    // Front face: white
-    [1.0,  0.0,  0.0,  1.0],    // Back face: red
-    [0.0,  1.0,  0.0,  1.0],    // Top face: green
-    [0.0,  0.0,  1.0,  1.0],    // Bottom face: blue
-    [1.0,  1.0,  0.0,  1.0],    // Right face: yellow
-    [1.0,  0.0,  1.0,  1.0],    // Left face: purple
-  ];
-
-  // Convert the array of colors into a table for all the vertices.
-
-  var colors = [];
-
-  for (var j = 0; j < faceColors.length; ++j) {
-    const c = faceColors[j];
-
-    // Repeat each color four times for the four vertices of the face
-    colors = colors.concat(c, c, c, c);
-  }
-
-  //const colorBuffer = gl.createBuffer();
-  //gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-  //gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-  
   const uvBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.uvs), gl.STATIC_DRAW);
@@ -326,11 +301,11 @@ function drawScene(gl, programInfo, buffers, texture, deltaTime) {
                  [-0.0, 0.0, -3.0]);  // amount to translate
   mat4.rotate(modelViewMatrix,  // destination matrix
               modelViewMatrix,  // matrix to rotate
-              viewRotationY,     // amount to rotate in radians
+              params.viewRotationY,     // amount to rotate in radians
               [1, 0, 0]);       // axis to rotate around (Y)
   mat4.rotate(modelViewMatrix,  // destination matrix
               modelViewMatrix,  // matrix to rotate
-              viewRotationX * .7,// amount to rotate in radians
+              params.viewRotationX * .7,// amount to rotate in radians
               [0, 1, 0]);       // axis to rotate around (X)
 
   const textureMatrix = mat3.create();
