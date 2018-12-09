@@ -1,6 +1,7 @@
 'use strict';
 
 export default class {
+
     constructor(id="") {
         this.element = document.createElement("div");
         this.element.id = id;
@@ -26,6 +27,8 @@ export default class {
             get() { return parseFloat(inputElem.value); },
             set(v) { inputElem.value = v; },
         });
+
+        return this[id];
     }
 
 };
