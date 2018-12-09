@@ -79,7 +79,8 @@ let uniforms = {
     tex: renderer.createTexture(cubetexture, () => {requestAnimationFrame(draw)})
 };
 
-{ // set static camera
+{ 
+  // set static camera
   const fieldOfView = 45 * Math.PI / 180;   // in radians
   const aspect = renderer.element.clientWidth / renderer.element.clientHeight;
   const zNear = 0.1;
@@ -92,29 +93,32 @@ let uniforms = {
                    aspect,
                    zNear,
                    zFar);
+
+  // set model transformation
+  mat4.translate(uniforms.modelViewMatrix,
+                 mat4.create(),
+                 [-0.0, 0.0, -3.0]);
+
+  // set texture transformation
+  mat3.translate(uniforms.textureMatrix, uniforms.textureMatrix, textureOffset);
+  mat3.scale(uniforms.textureMatrix, uniforms.textureMatrix, textureScale);
 }
 
 requestAnimationFrame(draw);
 cameraControls(renderer.element);
 
+function orthogonalMat4(translate_x, translate_y, translate_z, angle_x, angle_y, angle_z) {
+    //TODO: rename this function, it's just one way to create a orthogonal matrix
+    let m = mat4.create();
+    mat4.translate(m, m, [translate_x, translate_y, translate_z]);
+    mat4.rotate(m, m, angle_x, [1, 0, 0]);
+    mat4.rotate(m, m, angle_y, [0, 1, 0]);
+    mat4.rotate(m, m, angle_z, [0, 0, 1]);
+    return m;
+}
+
 function draw() {
-
-  mat4.translate(uniforms.modelViewMatrix,     // destination matrix
-                 mat4.create(),       // matrix to translate
-                 [-0.0, 0.0, -3.0]);  // amount to translate
-  mat4.rotate(uniforms.modelViewMatrix,  // destination matrix
-              uniforms.modelViewMatrix,  // matrix to rotate
-              params.viewRotationY,     // amount to rotate in radians
-              [1, 0, 0]);       // axis to rotate around (Y)
-  mat4.rotate(uniforms.modelViewMatrix,  // destination matrix
-              uniforms.modelViewMatrix,  // matrix to rotate
-              params.viewRotationX * .7,// amount to rotate in radians
-              [0, 1, 0]);       // axis to rotate around (X)
-
-  mat3.translate(uniforms.textureMatrix, uniforms.textureMatrix, textureOffset);
-  mat3.scale(uniforms.textureMatrix, uniforms.textureMatrix, textureScale);
-
-  renderer.draw(mesh.indices.length, attributes, indices, program, uniforms);
+    renderer.draw(mesh.indices.length, attributes, indices, program, uniforms);
 }
 
 // drag controls our view of the dome
@@ -131,7 +135,10 @@ function cameraControls(canvas) {
             params.viewRotationX %= Math.PI * 2;
             params.viewRotationY += (e.clientY - lastPosition.y) / params.rotationSensitivity;
             params.viewRotationY %= Math.PI * 2;
-
+            
+            uniforms.modelViewMatrix = orthogonalMat4(
+                0, 0, -3,
+                params.viewRotationY, params.viewRotationX, 0.);
             requestAnimationFrame(draw);
         }
         lastPosition = { x: e.clientX, y: e.clientY };
