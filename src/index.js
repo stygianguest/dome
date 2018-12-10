@@ -7,12 +7,13 @@ import Parameters from './Parameters.js';
 import Renderer from './Renderer.js';
 import geometry from './geometry.js';
 
-let params = new Parameters();
+let params = new Parameters("params", (x,v) => { requestAnimationFrame(draw); });
 document.body.appendChild(params.element);
 
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
 params.float("viewRotationX", 0.0, 0.1, 0.0, 2*Math.PI);
-params.float("viewRotationY", 0.0, 0.1, 0.0, 2*Math.PI);
+params.float("viewRotationY", -0.35, 0.1, 0.0, 2*Math.PI);
+params.float("viewDistance", 3.0, 0.1, 0.0);
 
 //var textureOffset = vec2.fromValues(0.5 * (1.0 - 480. / 640.), 0.0);
 //var textureScale = vec2.fromValues(480. / 640., 1.0);
@@ -56,7 +57,7 @@ let program = renderer.createProgram(
     float pi = 3.1415927410125732421875;
 
     void main(void) {
-      gl_Position = projectionMatrix * modelViewMatrix * vertices;
+      gl_Position = projectionMatrix * vertices;
       uv = vec2(textureMatrix * vec3(uvs, 1.));
     }
   `,
@@ -73,32 +74,30 @@ let program = renderer.createProgram(
   `);
 
 let uniforms = {
-    projectionMatrix: mat4.create(),
+    projectionMatrix: createCameraMatrix(params.viewDistance, params.viewRotationX, params.viewRotationY),
     modelViewMatrix: mat4.create(),
     textureMatrix: mat3.create(),
     tex: renderer.createTexture(cubetexture, () => {requestAnimationFrame(draw)})
 };
 
-{ 
-  // set static camera
-  const fieldOfView = 45 * Math.PI / 180;   // in radians
+function createCameraMatrix(distance, rotationX, rotationY) {
+  //FIXME: are the angles actually X and Y? (those are not the axis) let's call them  phi and lambda
+
+  const fieldOfView = 45 * Math.PI / 180; // in radians
   const aspect = renderer.element.clientWidth / renderer.element.clientHeight;
   const zNear = 0.1;
   const zFar = 100.0;
 
-  // note: glmatrix.js always has the first argument
-  // as the destination to receive the result.
-  mat4.perspective(uniforms.projectionMatrix,
-                   fieldOfView,
-                   aspect,
-                   zNear,
-                   zFar);
+  let m = mat4.create();
+  mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
+  mat4.translate(m, m, [0., 0., -distance]);
+  mat4.rotate(m, m, rotationY, [1, 0, 0]);
+  mat4.rotate(m, m, rotationX, [0, 1, 0]);
 
-  // set model transformation
-  mat4.translate(uniforms.modelViewMatrix,
-                 mat4.create(),
-                 [-0.0, 0.0, -3.0]);
+  return m;
+}
 
+{
   // set texture transformation
   mat3.translate(uniforms.textureMatrix, uniforms.textureMatrix, textureOffset);
   mat3.scale(uniforms.textureMatrix, uniforms.textureMatrix, textureScale);
@@ -107,17 +106,10 @@ let uniforms = {
 requestAnimationFrame(draw);
 cameraControls(renderer.element);
 
-function orthogonalMat4(translate_x, translate_y, translate_z, angle_x, angle_y, angle_z) {
-    //TODO: rename this function, it's just one way to create a orthogonal matrix
-    let m = mat4.create();
-    mat4.translate(m, m, [translate_x, translate_y, translate_z]);
-    mat4.rotate(m, m, angle_x, [1, 0, 0]);
-    mat4.rotate(m, m, angle_y, [0, 1, 0]);
-    mat4.rotate(m, m, angle_z, [0, 0, 1]);
-    return m;
-}
-
 function draw() {
+    uniforms.projectionMatrix = 
+        createCameraMatrix(params.viewDistance, params.viewRotationX, params.viewRotationY);
+            
     renderer.draw(mesh.indices.length, attributes, indices, program, uniforms);
 }
 
@@ -135,11 +127,6 @@ function cameraControls(canvas) {
             params.viewRotationX %= Math.PI * 2;
             params.viewRotationY += (e.clientY - lastPosition.y) / params.rotationSensitivity;
             params.viewRotationY %= Math.PI * 2;
-            
-            uniforms.modelViewMatrix = orthogonalMat4(
-                0, 0, -3,
-                params.viewRotationY, params.viewRotationX, 0.);
-            requestAnimationFrame(draw);
         }
         lastPosition = { x: e.clientX, y: e.clientY };
 
@@ -148,5 +135,4 @@ function cameraControls(canvas) {
         mouseIsDown = false;
     }, false);
 }
-
 
