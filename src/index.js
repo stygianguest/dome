@@ -11,8 +11,8 @@ let params = new Parameters("params", (x,v) => { requestAnimationFrame(draw); })
 document.body.appendChild(params.element);
 
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
-params.float("viewRotationX", 0.0, 0.1, 0.0, 2*Math.PI);
-params.float("viewRotationY", -0.35, 0.1, 0.0, 2*Math.PI);
+params.float("viewPhi", -0.35, 0.1, 0.0, 2*Math.PI);
+params.float("viewLambda", 0.0, 0.1, 0.0, 2*Math.PI);
 params.float("viewDistance", 3.0, 0.1, 0.0);
 
 //var textureOffset = vec2.fromValues(0.5 * (1.0 - 480. / 640.), 0.0);
@@ -74,13 +74,13 @@ let program = renderer.createProgram(
   `);
 
 let uniforms = {
-    projectionMatrix: createCameraMatrix(params.viewDistance, params.viewRotationX, params.viewRotationY),
+    projectionMatrix: createCameraMatrix(params.viewDistance, params.viewPhi, params.viewLambda),
     modelViewMatrix: mat4.create(),
     textureMatrix: mat3.create(),
     tex: renderer.createTexture(cubetexture, () => {requestAnimationFrame(draw)})
 };
 
-function createCameraMatrix(distance, rotationX, rotationY) {
+function createCameraMatrix(distance, phi, lambda) {
   //FIXME: are the angles actually X and Y? (those are not the axis) let's call them  phi and lambda
 
   const fieldOfView = 45 * Math.PI / 180; // in radians
@@ -91,8 +91,8 @@ function createCameraMatrix(distance, rotationX, rotationY) {
   let m = mat4.create();
   mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
   mat4.translate(m, m, [0., 0., -distance]);
-  mat4.rotate(m, m, rotationY, [1, 0, 0]);
-  mat4.rotate(m, m, rotationX, [0, 1, 0]);
+  mat4.rotate(m, m, phi, [1, 0, 0]);
+  mat4.rotate(m, m, lambda, [0, 1, 0]);
 
   return m;
 }
@@ -108,7 +108,7 @@ cameraControls(renderer.element);
 
 function draw() {
     uniforms.projectionMatrix = 
-        createCameraMatrix(params.viewDistance, params.viewRotationX, params.viewRotationY);
+        createCameraMatrix(params.viewDistance, params.viewPhi, params.viewLambda);
             
     renderer.draw(mesh.indices.length, attributes, indices, program, uniforms);
 }
@@ -123,10 +123,10 @@ function cameraControls(canvas) {
     }, false);
     canvas.addEventListener("mousemove", function(e){
         if (mouseIsDown) {
-            params.viewRotationX += (e.clientX - lastPosition.x) / params.rotationSensitivity;
-            params.viewRotationX %= Math.PI * 2;
-            params.viewRotationY += (e.clientY - lastPosition.y) / params.rotationSensitivity;
-            params.viewRotationY %= Math.PI * 2;
+            params.viewLambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
+            params.viewLambda %= Math.PI * 2;
+            params.viewPhi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
+            params.viewPhi %= Math.PI * 2;
         }
         lastPosition = { x: e.clientX, y: e.clientY };
 
