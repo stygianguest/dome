@@ -20,58 +20,10 @@ params.float("viewDistance", 3.0, 0.1, 0.0);
 var textureOffset = vec2.fromValues(0.0, 0.0);
 var textureScale = vec2.fromValues(1.0, 1.0);
 
-let mesh = geometry.uvHemisphere(24, 64);
-
 let renderer = new Renderer();
 
 document.body.appendChild(renderer.element);
 document.body.appendChild(params.element);
-
-let attributes = {
-    vertices: { 
-        buffer: renderer.createArrayBuffer(new Float32Array(mesh.vertices)),
-        numComponents: 3,
-        type: renderer.gl.FLOAT //FIXME: can we get rid of this param?
-    },
-    uvs: {
-        buffer: renderer.createArrayBuffer(new Float32Array(mesh.uvs)),
-        numComponents: 2,
-        type: renderer.gl.FLOAT
-    }
-}
-
-let indices = renderer.createArrayBuffer(new Uint16Array(mesh.indices), true);
-
-let program = renderer.createProgram(
-  `#version 300 es
-
-    in vec4 vertices;
-    in vec2 uvs;
-
-    uniform mat4 modelViewMatrix;
-    uniform mat4 projectionMatrix;
-
-    out highp vec2 uv;
-    uniform mat3 textureMatrix;
-
-    float pi = 3.1415927410125732421875;
-
-    void main(void) {
-      gl_Position = projectionMatrix * vertices;
-      uv = vec2(textureMatrix * vec3(uvs, 1.));
-    }
-  `,
-  `#version 300 es
-
-    in highp vec2 uv;
-    uniform sampler2D tex;
-
-    out lowp vec4 color;
-
-    void main(void) {
-      color = texture(tex, uv);
-    }
-  `);
 
 let uniforms = {
     projectionMatrix: createCameraMatrix(params.viewDistance, params.viewPhi, params.viewLambda),
@@ -79,6 +31,70 @@ let uniforms = {
     textureMatrix: mat3.create(),
     tex: renderer.createTexture(cubetexture, () => {requestAnimationFrame(draw)})
 };
+
+{
+  // set texture transformation
+  mat3.translate(uniforms.textureMatrix, uniforms.textureMatrix, textureOffset);
+  mat3.scale(uniforms.textureMatrix, uniforms.textureMatrix, textureScale);
+}
+
+let hemisphere = renderer.createObject(
+    geometry.uvHemisphere(24, 64),
+    uniforms,
+    `#version 300 es
+
+      in vec4 vertices;
+      in vec2 uvs;
+
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+
+      out highp vec2 uv;
+      uniform mat3 textureMatrix;
+
+      void main(void) {
+        gl_Position = projectionMatrix * vertices;
+        uv = vec2(textureMatrix * vec3(uvs, 1.));
+      }
+    `,
+    `#version 300 es
+
+      in highp vec2 uv;
+      uniform sampler2D tex;
+
+      out lowp vec4 color;
+
+      void main(void) {
+        color = texture(tex, uv);
+      }
+    `);
+
+
+let disk = geometry.disk(24);
+console.log(disk.indices);
+
+let dot = renderer.createObject(
+    disk,
+    uniforms,
+    `#version 300 es
+
+      in vec4 vertices;
+
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+
+      void main(void) {
+        gl_Position = projectionMatrix * vertices;
+      }
+    `,
+    `#version 300 es
+
+      out lowp vec4 color;
+
+      void main(void) {
+        color = vec4(1.);
+      }
+    `);
 
 function createCameraMatrix(distance, phi, lambda) {
   //FIXME: are the angles actually X and Y? (those are not the axis) let's call them  phi and lambda
@@ -97,20 +113,16 @@ function createCameraMatrix(distance, phi, lambda) {
   return m;
 }
 
-{
-  // set texture transformation
-  mat3.translate(uniforms.textureMatrix, uniforms.textureMatrix, textureOffset);
-  mat3.scale(uniforms.textureMatrix, uniforms.textureMatrix, textureScale);
-}
-
-requestAnimationFrame(draw);
 cameraControls(renderer.element);
+requestAnimationFrame(draw);
 
 function draw() {
     uniforms.projectionMatrix = 
         createCameraMatrix(params.viewDistance, params.viewPhi, params.viewLambda);
-            
-    renderer.draw(mesh.indices.length, attributes, indices, program, uniforms);
+           
+    renderer.clear();
+    dot.draw();
+    hemisphere.draw();
 }
 
 // drag controls our view of the dome

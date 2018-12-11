@@ -87,17 +87,19 @@ export default class {
         };
     }
 
-    draw(indices_length, attributes, indices, program, uniforms) {
-        //TODO: separate clear to somewhere else
+    clear() {
         this.gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
         this.gl.clearDepth(1.0);                 // Clear everything
+
+        //TODO: doesn't make much sense to do this in clear
         this.gl.enable(this.gl.DEPTH_TEST);           // Enable depth testing
         this.gl.depthFunc(this.gl.LEQUAL);            // Near things obscure far things
 
-        // Clear the canvas before we start drawing on it.
-
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+    }
 
+    draw(indices_length, attributes, indices, program, uniforms) {
+        
         // bind attributes
         for (let name in program.attributes) {
             this.gl.bindBuffer(this.gl.ARRAY_BUFFER, attributes[name].buffer);
@@ -139,6 +141,36 @@ export default class {
         }
 
         this.gl.drawElements(this.gl.TRIANGLES, indices_length, this.gl.UNSIGNED_SHORT, 0 /*offset*/);
+    }
+
+    createObject(mesh, uniforms, vertexShader, fragmentShader) {
+        let renderer = this;
+
+        let attributes = {
+            vertices: { 
+                buffer: renderer.createArrayBuffer(mesh.vertices),
+                numComponents: 3,
+                type: renderer.gl.FLOAT //FIXME: can we get rid of this param?
+            }
+        };
+
+        if (mesh.uvs !== undefined) {
+            attributes["uvs"] = {
+                buffer: renderer.createArrayBuffer(mesh.uvs),
+                numComponents: 2,
+                type: renderer.gl.FLOAT
+            };
+        }
+        
+        let indices = renderer.createArrayBuffer(mesh.indices, true);
+        
+        let program = renderer.createProgram(vertexShader, fragmentShader);
+
+        let draw = function() {
+            renderer.draw(mesh.indices.length, attributes, indices, program, uniforms);
+        };
+
+        return { uniforms: uniforms, draw: draw };
     }
 };
 
@@ -206,3 +238,4 @@ function loadShader(gl, type, source) {
 
   return shader;
 }
+

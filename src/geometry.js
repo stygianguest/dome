@@ -1,9 +1,12 @@
 'use strict';
 
-export default { uvHemisphere };
+export default { uvHemisphere, disk };
 
 //TODO: we probably should generate an icosphere
 function uvHemisphere(numLatitudes, numLongitudes) {
+    //TODO: optimize, allocate proper float array of right size immediately
+    //TODO: parametrize axis of the sphere?
+    //TODO: separate out the UV coords, because we could want different ones
 
     let maxLatitude = 0.5 * Math.PI;
 
@@ -77,5 +80,39 @@ function uvHemisphere(numLatitudes, numLongitudes) {
         0               + (numLatitudes-1) * numLongitudes,
         vertices.length/3 - 1 /* pole */]);
 
-    return { vertices: vertices, uvs: uvs, indices: indices };
+    return {
+        vertices: new Float32Array(vertices),
+        uvs: new Float32Array(uvs),
+        indices: new Uint16Array(indices)
+    };
+}
+
+function disk(numSpokes) {
+    let vertices = new Float32Array(3 * (numSpokes + 1));
+
+    // the center axis
+    vertices[0] = 0.;
+    vertices[1] = 0.;
+    vertices[2] = 0.;
+
+    // draw a circle with dots
+    let aStep = 2*Math.PI / numSpokes;
+    let a = 0;
+
+    for (let i = 3; i < vertices.length; i+=3) {
+        a += aStep;
+        vertices[i+0] = Math.sin(a);
+        vertices[i+1] = Math.cos(a);
+        vertices[i+2] = 0;
+    }
+
+    let indices = new Uint16Array(numSpokes*3);
+    // connected the dots, with triangles
+    for (let i = 0; i < numSpokes; ++i) {
+        indices[3*i+0] = i               + 1;
+        indices[3*i+1] = (i+1)%numSpokes + 1;
+        indices[3*i+2] = 0;
+    }
+
+    return { vertices: vertices, indices: indices };
 }
