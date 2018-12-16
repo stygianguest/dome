@@ -7,13 +7,17 @@ import Parameters from './Parameters.js';
 import Renderer from './Renderer.js';
 import geometry from './geometry.js';
 
-let params = new Parameters("params", (x,v) => { requestAnimationFrame(draw); });
+let params = new Parameters("params", "Parameters", (x,v) => { requestAnimationFrame(draw); });
 document.body.appendChild(params.element);
 
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
-params.float("viewPhi", -0.35, 0.1, 0.0, 2*Math.PI);
-params.float("viewLambda", 0.0, 0.1, 0.0, 2*Math.PI);
-params.float("viewDistance", 3.0, 0.1, 0.0);
+
+params.subsection("view");
+params.view.float("phi", -0.35, 0.1, -2*Math.PI, 2*Math.PI);
+params.view.float("lambda", 0.0, 0.1, -2*Math.PI, 2*Math.PI);
+params.view.float("distance", 3.0, 0.1, 0.0);
+
+params.choice("abc", [ 'a', 'b', 'c' ] , 0);
 
 //var textureOffset = vec2.fromValues(0.5 * (1.0 - 480. / 640.), 0.0);
 //var textureScale = vec2.fromValues(480. / 640., 1.0);
@@ -26,7 +30,7 @@ document.body.appendChild(renderer.element);
 document.body.appendChild(params.element);
 
 let uniforms = {
-    projectionMatrix: createCameraMatrix(params.viewDistance, params.viewPhi, params.viewLambda),
+    projectionMatrix: createCameraMatrix(params.view.distance, params.view.phi, params.view.lambda),
     modelViewMatrix: mat4.create(),
     textureMatrix: mat3.create(),
     tex: renderer.createTexture(cubetexture, () => {requestAnimationFrame(draw)})
@@ -71,7 +75,6 @@ let hemisphere = renderer.createObject(
 
 
 let disk = geometry.disk(24);
-console.log(disk.indices);
 
 let dot = renderer.createObject(
     disk,
@@ -118,11 +121,13 @@ requestAnimationFrame(draw);
 
 function draw() {
     uniforms.projectionMatrix = 
-        createCameraMatrix(params.viewDistance, params.viewPhi, params.viewLambda);
+        createCameraMatrix(params.view.distance, params.view.phi, params.view.lambda);
            
     renderer.clear();
-    dot.draw();
+    //dot.draw();
     hemisphere.draw();
+
+    console.log(params.abc);
 }
 
 // drag controls our view of the dome
@@ -135,10 +140,10 @@ function cameraControls(canvas) {
     }, false);
     canvas.addEventListener("mousemove", function(e){
         if (mouseIsDown) {
-            params.viewLambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
-            params.viewLambda %= Math.PI * 2;
-            params.viewPhi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
-            params.viewPhi %= Math.PI * 2;
+            params.view.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
+            params.view.lambda %= Math.PI * 2;
+            params.view.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
+            params.view.phi %= Math.PI * 2;
         }
         lastPosition = { x: e.clientX, y: e.clientY };
 
