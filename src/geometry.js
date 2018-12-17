@@ -31,10 +31,10 @@ function uvHemisphere(numLatitudes, numLongitudes) {
 
             // fisheye uv projection
             let r = Math.atan2(Math.sqrt(x*x + y*y), z) / Math.PI;
-            let phi = longitude;//Math.atan2(y, x);
+            let lambda = longitude;//Math.atan2(y, x);
 
-            let u = 0.5 + r * Math.cos(phi);
-            let v = 0.5 + r * Math.sin(phi);
+            let u = 0.5 + r * Math.cos(lambda);
+            let v = 0.5 + r * Math.sin(lambda);
 
             uvs = uvs.concat([u,v]);
         }

@@ -96,14 +96,15 @@ class Parameters {
                 let i = 0;
                 for (let button of buttons) {
                     if (button.checked) {
-                        return i;
+                        return choices[i];
                     }
                     i++;
                 }
 
-                return -1;
+                return "";
             },
-            set(i) {
+            set(v) {
+                let i = choices.indexOf(v);
                 let j = 0;
                 for (let button of buttons) {
                     buttons[j].checked = i == j;

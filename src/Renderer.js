@@ -123,6 +123,9 @@ export default class {
         var texture = 0;
         for (let name in program.uniforms) {
             switch (program.uniforms[name].info.type) {
+            case this.gl.FLOAT:
+                this.gl.uniform1f(program.uniforms[name].location, uniforms[name]);
+                break;
             case this.gl.FLOAT_MAT3:
                 this.gl.uniformMatrix3fv(program.uniforms[name].location, false, uniforms[name]);
                 break;

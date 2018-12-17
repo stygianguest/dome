@@ -17,7 +17,7 @@ params.view.float("phi", -0.35, 0.1, -2*Math.PI, 2*Math.PI);
 params.view.float("lambda", 0.0, 0.1, -2*Math.PI, 2*Math.PI);
 params.view.float("distance", 3.0, 0.1, 0.0);
 
-params.choice("abc", [ 'a', 'b', 'c' ] , 0);
+params.choice("projection", [ 'view', 'stereographic', 'orthographic', 'equiarea', 'equidistant' ] , 3);
 
 //var textureOffset = vec2.fromValues(0.5 * (1.0 - 480. / 640.), 0.0);
 //var textureScale = vec2.fromValues(480. / 640., 1.0);
@@ -33,6 +33,7 @@ let uniforms = {
     projectionMatrix: createCameraMatrix(params.view.distance, params.view.phi, params.view.lambda),
     modelViewMatrix: mat4.create(),
     textureMatrix: mat3.create(),
+    aspectRatio: renderer.element.clientHeight / renderer.element.clientWidth, //FIXME: is width/height the typical way?
     tex: renderer.createTexture(cubetexture, () => {requestAnimationFrame(draw)})
 };
 
@@ -42,37 +43,79 @@ let uniforms = {
   mat3.scale(uniforms.textureMatrix, uniforms.textureMatrix, textureScale);
 }
 
-let hemisphere = renderer.createObject(
-    geometry.uvHemisphere(24, 64),
-    uniforms,
-    `#version 300 es
+function createHemisphere(projection) {
 
-      in vec4 vertices;
-      in vec2 uvs;
+    return renderer.createObject(
+        geometry.uvHemisphere(24, 64),
+        uniforms,
+        `#version 300 es
 
-      uniform mat4 modelViewMatrix;
-      uniform mat4 projectionMatrix;
+          in vec4 vertices;
+          in vec2 uvs;
 
-      out highp vec2 uv;
-      uniform mat3 textureMatrix;
+          uniform mat4 modelViewMatrix;
 
-      void main(void) {
-        gl_Position = projectionMatrix * vertices;
-        uv = vec2(textureMatrix * vec3(uvs, 1.));
-      }
-    `,
-    `#version 300 es
+          ${projection}
 
-      in highp vec2 uv;
-      uniform sampler2D tex;
+          out highp vec2 uv;
+          uniform mat3 textureMatrix;
 
-      out lowp vec4 color;
+          void main(void) {
+            gl_Position = projection(vertices);
+            uv = vec2(textureMatrix * vec3(uvs, 1.));
+          }
+        `,
+        `#version 300 es
 
-      void main(void) {
-        color = texture(tex, uv);
-      }
-    `);
+          in highp vec2 uv;
+          uniform sampler2D tex;
 
+          out lowp vec4 color;
+
+          void main(void) {
+            color = texture(tex, uv);
+          }
+        `);
+
+}
+
+let hemisphereMatrixProjection = createHemisphere(`
+    uniform mat4 projectionMatrix;
+
+    vec4 projection(vec4 v) { return projectionMatrix * v; }
+`);
+
+//TODO: reuse buffers, programs?
+let hemisphereEquidistant = createHemisphere(`
+    uniform float aspectRatio;
+
+    vec4 projection(vec4 v) {
+        float r = atan(sqrt(v.x*v.x + v.y*v.y), v.z) / ${Math.PI};
+        float theta = atan(v.y, v.x);
+
+        float x = 2.0 * r * cos(theta);
+        float y = 2.0 * r * sin(theta);
+
+        return vec4(x * aspectRatio, y, 0., 1.); //TODO: what about depth?
+    }
+`);
+
+let hemisphereEquiarea = createHemisphere(`
+    uniform float aspectRatio;
+
+    //FIXME: just return a vec3?
+    vec4 projection(vec4 v) {
+        float theta = asin(v.z);
+        float lambda = atan(v.y, v.x);
+
+        float r = cos(theta);
+
+        float x = r * cos(lambda);
+        float y = r * sin(lambda);
+
+        return vec4(x * aspectRatio, y, 0., 1.);
+    }
+`);
 
 let disk = geometry.disk(24);
 
@@ -120,14 +163,57 @@ cameraControls(renderer.element);
 requestAnimationFrame(draw);
 
 function draw() {
-    uniforms.projectionMatrix = 
-        createCameraMatrix(params.view.distance, params.view.phi, params.view.lambda);
-           
     renderer.clear();
-    //dot.draw();
-    hemisphere.draw();
 
-    console.log(params.abc);
+    //TODO: reuse existing matrices rather than recreate them
+    if (params.projection === "stereographic") {
+        const fieldOfView = 0.5 * Math.PI;
+        const aspect = renderer.element.clientWidth / renderer.element.clientHeight;
+        const zNear = 1.0;
+        const zFar = 100.0;
+        const phi = -Math.PI;
+        const lambda = 0;
+        const distance = 1;
+
+        let m = mat4.create();
+        mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
+        mat4.translate(m, m, [0., 0., -distance]);
+        mat4.rotate(m, m, phi, [1, 0, 0]);
+        mat4.rotate(m, m, lambda, [0, 1, 0]);
+
+        uniforms.projectionMatrix = m;
+        hemisphereMatrixProjection.draw();
+    } else if (params.projection === "orthographic") {
+        const aspect = renderer.element.clientWidth / renderer.element.clientHeight;
+        const left = -1 * aspect;
+        const right = 1 * aspect;
+        const bottom = -1;
+        const top = 1;
+        const zNear = 0.0;
+        const zFar = 100.0;
+        const phi = 0;
+        const lambda = 0;
+        const distance = 1;
+
+        let m = mat4.create();
+        mat4.ortho(m, left, right, bottom, top, zNear, zFar);
+        mat4.translate(m, m, [0., 0., -distance]);
+        mat4.rotate(m, m, phi, [1, 0, 0]);
+        mat4.rotate(m, m, lambda, [0, 1, 0]);
+
+        uniforms.projectionMatrix = m;
+        hemisphereMatrixProjection.draw();
+    } else if (params.projection === "equidistant") {
+        hemisphereEquidistant.draw();
+    } else if (params.projection === "equiarea") {
+        hemisphereEquiarea.draw();
+    } else /*if (params.projection === "view")*/ {
+        uniforms.projectionMatrix = 
+            createCameraMatrix(params.view.distance, params.view.phi, params.view.lambda);
+        hemisphereMatrixProjection.draw();
+    }
+
+    //dot.draw();
 }
 
 // drag controls our view of the dome
