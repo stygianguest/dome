@@ -3,7 +3,7 @@
 //import cubetexture from './images/cubetexture.png';
 import cubetexture from './images/fisheye_grid.gif';
 import {mat4, mat3, vec2} from 'gl-matrix';
-import Parameters from './Parameters.js';
+import { Parameters } from './Parameters.js';
 import Renderer from './Renderer.js';
 import geometry from './geometry.js';
 
@@ -12,12 +12,14 @@ document.body.appendChild(params.element);
 
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
 
-params.subsection("view");
+params.section("view");
 params.view.float("phi", -0.35, 0.1, -2*Math.PI, 2*Math.PI);
 params.view.float("lambda", 0.0, 0.1, -2*Math.PI, 2*Math.PI);
 params.view.float("distance", 3.0, 0.1, 0.0);
 
-params.choice("projection", [ 'view', 'stereographic', 'orthographic', 'equiarea', 'equidistant' ] , 3);
+params.choice("projection", 3, [ 'view', 'stereographic', 'orthographic', 'equiarea', 'equidistant' ]);
+
+console.log(params.toJSON());
 
 //var textureOffset = vec2.fromValues(0.5 * (1.0 - 480. / 640.), 0.0);
 //var textureScale = vec2.fromValues(480. / 640., 1.0);

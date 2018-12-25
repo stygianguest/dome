@@ -2,12 +2,13 @@ const path = require('path');
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
-    entry: [
-        './src/index.js'
-    ],
+    entry: {
+        index: './src/index.js',
+        param: './src/param.js'
+    },
     output: {
         path: path.join(__dirname, 'dist'),
-        filename: 'index_bundle.js'
+        filename: '[name]_bundle.js'
     },
     module: {
       rules: [
@@ -30,7 +31,19 @@ module.exports = {
     },
     plugins: [
       new HtmlWebpackPlugin({
-        template: "./src/index.html"
+        template: "./src/index.html",
+        chunks: ['index'],
+        filename: './dist/index.html'
+      }),
+      new HtmlWebpackPlugin({
+        template: "./src/param.html",
+        chunks: ['param'],
+        filename: './dist/param.html'
       })
-    ]
+    ],
+    devServer: {
+        contentBase: path.join(__dirname, 'dist'),
+        compress: true,
+        port: 8080
+    }
 };
