@@ -33,6 +33,7 @@ class Parameter {
     }
 
     update(json) {
+        // important that this one does not cause updates to be broadcast
         this.setValue(json.value);
     }
 }
@@ -108,7 +109,13 @@ export class Parameters {
             this.onchange({id, value});
         };
 
-        Object.defineProperty(this, id, { get, set });
+        Object.defineProperty(this, id, { 
+            get, 
+            set(value) {
+                set(value);
+                this.broadcastUpdate({id, value});
+            }
+        });
 
         this.parameters.set(id, new Parameter("float", id, get, set, [step, min, max, description]));
 
@@ -181,7 +188,13 @@ export class Parameters {
             this.onchange({id, value: i})
         };
 
-        Object.defineProperty(this, id, { get, set });
+        Object.defineProperty(this, id, { 
+            get, 
+            set(value) {
+                 set(value);
+                this.broadcastUpdate({id, value});
+            }
+        });
 
         this.element.appendChild(element);
 
