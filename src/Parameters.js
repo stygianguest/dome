@@ -45,6 +45,7 @@ export class Parameters {
         this.id = id;
         this.title = title;
         this.parameters = new Map();
+        this.onchange = onchange;
 
         this.element = document.createElement("div");
 
@@ -66,17 +67,7 @@ export class Parameters {
             detach.target = "_blank"; // open in new window
             detach.onclick = () => { this.detach(); };
 
-            this.onchange = (c) => {
-                let change = {id, parameters: [c]};
-                onchange(change);
-                this.channel.postMessage({action: 'update', sender: this.broadcastID, data: change});
-            };
-
             this.element.appendChild(detach);
-        } else {
-            this.onchange = (c) => {
-                this.superSection.onchange({id, parameters: [c]});
-            };
         }
 
         this.element.id = id;
@@ -107,19 +98,17 @@ export class Parameters {
         inputElem.description = description;
 
         inputElem.onchange = () => {
-            this.onchange({id, 'value': parseFloat(inputElem.value)})
+            this.onchange({id, value});
+            this.broadcastUpdate({id, 'value': parseFloat(inputElem.value)})
         };
             
         let get = () => { return parseFloat(inputElem.value); };
-        let set = (value) => { inputElem.value = value; };
+        let set = (value) => {
+            inputElem.value = value;
+            this.onchange({id, value});
+        };
 
-        Object.defineProperty(this, id, {
-            get,
-            set(value) {
-                set(value);
-                this.onchange({id, value});
-            },
-        });
+        Object.defineProperty(this, id, { get, set });
 
         this.parameters.set(id, new Parameter("float", id, get, set, [step, min, max, description]));
 
@@ -157,6 +146,7 @@ export class Parameters {
             button.checked = buttons.length == value || choice == value;
             button.onchange = () => {
                 this.onchange({id, value: this[id]})
+                this.broadcastUpdate({id, value: this[id]})
             };
 
             let label = document.createElement("label");
@@ -188,15 +178,10 @@ export class Parameters {
                 buttons[j].checked = i == j;
                 j++;
             }
+            this.onchange({id, value: i})
         };
 
-        Object.defineProperty(this, id, {
-            get,
-            set(v) {
-                set(v);
-                this.onchange({id, value: i})
-            }
-        });
+        Object.defineProperty(this, id, { get, set });
 
         this.element.appendChild(element);
 
@@ -231,13 +216,22 @@ export class Parameters {
         }
     }
 
-    update(json) {
+    broadcastUpdate(change) {
+        if (this.superSection == null) {
+            this.channel.postMessage( {
+                action: 'update',
+                sender: this.broadcastID,
+                data: {id: this.id, parameters: [change]}
+            });
+        } else {
+            this.superSection.broadcastUpdate({id: this.id, parameters: [change]});
+        }
+    }
 
+    update(json) {
         for (let p of json.parameters) {
             this.parameters.get(p.id).update(p);
         }
-
-        //TODO: onupdate(json);
     }
 
 }
