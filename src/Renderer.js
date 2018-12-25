@@ -2,7 +2,7 @@
 
 export default class {
 
-    constructor(width=640, height=480) {
+    constructor(width, height) {
         this.element = document.createElement("canvas");
         this.element.width = width;
         this.element.height = height;
@@ -87,9 +87,9 @@ export default class {
         };
     }
 
-    clear() {
-        this.gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
-        this.gl.clearDepth(1.0);                 // Clear everything
+    clear(r=0.0, g=0.0, b=0.0, a=1.0) {
+        this.gl.clearColor(r,g,b,a);  // Clear to black, fully opaque
+        this.gl.clearDepth(1.0);      // Clear everything
 
         //TODO: doesn't make much sense to do this in clear
         this.gl.enable(this.gl.DEPTH_TEST);           // Enable depth testing
@@ -174,6 +174,26 @@ export default class {
         };
 
         return { uniforms: uniforms, draw: draw };
+    }
+
+    toggleFullscreen() {
+        this.element.fullscreenElement = this.element.fullscreenElement 
+            || this.element.mozFullscreenElement
+            || this.element.msFullscreenElement 
+            || this.element.webkitFullscreenDocument;
+
+        this.element.requestFullscreen = this.element.requestFullscreen 
+            || this.element.mozRequestFullScreen
+            || this.element.msRequestFullscreen
+            || this.element.webkitRequestFullscreen;
+
+        if (!document.fullscreenElement) {
+            this.element.requestFullscreen().then({}).catch(err => {
+                    alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                    });
+        } else {
+            document.exitFullscreen();
+        }
     }
 };
 

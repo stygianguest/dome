@@ -21,15 +21,30 @@ params.choice("projection", 3, [ 'view', 'stereographic', 'orthographic', 'equia
 
 console.log(params.toJSON());
 
-//var textureOffset = vec2.fromValues(0.5 * (1.0 - 480. / 640.), 0.0);
-//var textureScale = vec2.fromValues(480. / 640., 1.0);
 var textureOffset = vec2.fromValues(0.0, 0.0);
 var textureScale = vec2.fromValues(1.0, 1.0);
 
-let renderer = new Renderer();
+let renderer = new Renderer(640, 480);
 
 document.body.appendChild(renderer.element);
 document.body.appendChild(params.element);
+
+{ // add fullscreen button
+    function handleKeypress(event) {
+      if (event.keyCode === 27) {
+        document.exitFullscreen();
+      }
+    }
+
+    let fullscreen = document.createElement("a");
+    fullscreen.innerText = "fullscreen";
+    fullscreen.href = '#';
+    fullscreen.onclick = () => { renderer.toggleFullscreen(); };
+    document.body.appendChild(fullscreen);
+
+    document.addEventListener("keypress", handleKeypress, false);
+}
+
 
 let uniforms = {
     projectionMatrix: createCameraMatrix(params.view.distance, params.view.phi, params.view.lambda),
@@ -165,7 +180,7 @@ cameraControls(renderer.element);
 requestAnimationFrame(draw);
 
 function draw() {
-    renderer.clear();
+    renderer.clear(0, 0, 0.2, 1);
 
     //TODO: reuse existing matrices rather than recreate them
     if (params.projection === "stereographic") {
@@ -240,4 +255,5 @@ function cameraControls(canvas) {
         mouseIsDown = false;
     }, false);
 }
+
 
