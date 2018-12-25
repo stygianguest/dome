@@ -40,6 +40,7 @@ class Parameter {
 export class Parameters {
 
     constructor(id, title="", onchange=(c) => {}, superSection=null) {
+        this.broadcastID = makeRandomIdentifier(16);
         this.superSection = superSection;
         this.id = id;
         this.title = title;
@@ -68,7 +69,7 @@ export class Parameters {
             this.onchange = (c) => {
                 let change = {id, parameters: [c]};
                 onchange(change);
-                this.channel.postMessage({action: 'update', data: change});
+                this.channel.postMessage({action: 'update', sender: this.broadcastID, data: change});
             };
 
             this.element.appendChild(detach);
@@ -84,12 +85,6 @@ export class Parameters {
     detach() {
         //window.open(makeParamURL(this.channelName), "_blank", 
         //    "location=yes,height=600,width=300,scrollbars=yes,status=no");
-    }
-
-    onBroadcastMessage(msg) {
-        if (msg.data.action == "request") {
-            this.channel.postMessage({action: "create", data: this.toJSON()});
-        }
     }
 
     float(id, value=0., step=0.1, min=null, max=null, description="") {
@@ -220,6 +215,22 @@ export class Parameters {
         };
     }
 
+    onBroadcastMessage(msg) {
+        if (msg.data.sender == this.broadcastID) {
+            // ignore messages from self
+            return;
+        }
+
+        if (msg.data.action == "request") {
+            //TODO: should only answer the request if I'm the original?
+            this.channel.postMessage({action: "create", sender: this.broadcastID, data: this.toJSON()});
+
+        } else if (msg.data.action == "update") {
+
+            this.update(msg.data.data);
+        }
+    }
+
     update(json) {
 
         for (let p of json.parameters) {
@@ -251,6 +262,4 @@ export function ParametersOfJSON(json) {
 
     return null;// throw error?
 }
-
-//export default { Parameters, ParametersOfJSON };
 

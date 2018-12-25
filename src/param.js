@@ -15,8 +15,7 @@ channel.onmessage = (msg) => {
     if (msg.data.action == "create") {
         params = ParametersOfJSON(msg.data.data);//JSON.parse(msg));
         document.body.appendChild(params.element);
-    } else if (msg.data.action == "update") {
-        params.update(msg.data.data);
+        channel.onmessage = (msg) => { params.onBroadcastMessage(msg); };
     }
 };
 
