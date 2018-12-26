@@ -55,14 +55,8 @@ export class Parameters {
         if (this.superSection == null) {
             this.element.classList.add('parameters');
 
-            //this.channelName = makeRandomIdentifier(8);
-            this.channelName = "asdf";
-            this.channel = new BroadcastChannel(this.channelName);
-            this.channel.onmessage = (msg) => { this.onBroadcastMessage(msg); };
-
             let titleElement = document.createElement("div");
             titleElement.classList.add('parametersTitle');
-            //titleElement.style.float = 'left';
             titleElement.innerText = id;
             this.element.appendChild(titleElement);
 
@@ -70,8 +64,7 @@ export class Parameters {
             detach.style.float = 'right';
             detach.classList.add("icon");
             detach.innerText = "⇱";
-            detach.href = makeParamURL(this.channelName);
-            detach.target = "_blank"; // open in new window
+            detach.href = '#';
             detach.onclick = () => { this.detach(); };
 
             titleElement.appendChild(detach);
@@ -85,8 +78,21 @@ export class Parameters {
     }
 
     detach() {
-        //window.open(makeParamURL(this.channelName), "_blank", 
-        //    "location=yes,height=600,width=300,scrollbars=yes,status=no");
+        if (this.channel == undefined) {
+            this.channelName = makeRandomIdentifier(8);
+            this.channel = new BroadcastChannel(this.channelName);
+            this.channel.onmessage = (msg) => { this.onBroadcastMessage(msg); };
+        }
+        
+        let width = Math.max(200, this.element.clientWidth);
+        let height = Math.max(300, this.element.clientHeight);
+
+        window.open(makeParamURL(this.channelName), "_blank", 
+            `location=yes,height=${height},width=${width},scrollbars=yes,status=no`);
+
+        //TODO: we would like to do this, but then we have to also notify
+        //      reattach on close, or else we lose control
+        //this.element.style.display = 'none';
     }
 
     float(id, value=0., step=0.1, min=null, max=null, description="") {

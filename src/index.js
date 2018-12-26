@@ -19,10 +19,6 @@ params.view.float("distance", 3.0, 0.1, 0.0);
 
 params.enum("projection", 'view', [ 'view', 'stereographic', 'orthographic', 'equiarea', 'equidistant' ]);
 
-console.log(params.onzin);
-
-console.log(params.toJSON());
-
 var textureOffset = vec2.fromValues(0.0, 0.0);
 var textureScale = vec2.fromValues(1.0, 1.0);
 
