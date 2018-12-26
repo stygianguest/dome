@@ -49,7 +49,7 @@ document.body.appendChild(params.element);
 
 
 let uniforms = {
-    projectionMatrix: createCameraMatrix(params.view.distance, params.view.phi, params.view.lambda),
+    projectionMatrix: mat4.create(),
     modelViewMatrix: mat4.create(),
     textureMatrix: mat3.create(),
     aspectRatio: renderer.element.clientHeight / renderer.element.clientWidth, //FIXME: is width/height the typical way?
@@ -165,7 +165,7 @@ function createCameraMatrix(distance, phi, lambda) {
   //FIXME: are the angles actually X and Y? (those are not the axis) let's call them  phi and lambda
 
   const fieldOfView = 45 * Math.PI / 180; // in radians
-  const aspect = renderer.element.clientWidth / renderer.element.clientHeight;
+  const aspect = 1. / uniforms.aspectRatio;
   const zNear = 0.1;
   const zFar = 100.0;
 
@@ -187,7 +187,7 @@ function draw() {
     //TODO: reuse existing matrices rather than recreate them
     if (params.projection === "stereographic") {
         const fieldOfView = 0.5 * Math.PI;
-        const aspect = renderer.element.clientWidth / renderer.element.clientHeight;
+        const aspect = 1.0 / uniforms.aspectRatio;
         const zNear = 1.0;
         const zFar = 100.0;
         const phi = -Math.PI;
@@ -203,7 +203,7 @@ function draw() {
         uniforms.projectionMatrix = m;
         hemisphereMatrixProjection.draw();
     } else if (params.projection === "orthographic") {
-        const aspect = renderer.element.clientWidth / renderer.element.clientHeight;
+        const aspect = 1.0 / uniforms.aspectRatio;
         const left = -1 * aspect;
         const right = 1 * aspect;
         const bottom = -1;
