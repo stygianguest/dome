@@ -7,7 +7,7 @@ import { Parameters } from './Parameters.js';
 import Renderer from './Renderer.js';
 import geometry from './geometry.js';
 
-let params = new Parameters("params", "Parameters", (x,v) => { requestAnimationFrame(draw); });
+let params = new Parameters("params", (x,v) => { requestAnimationFrame(draw); });
 document.body.appendChild(params.element);
 
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
@@ -17,7 +17,9 @@ params.view.float("phi", -0.35, 0.1, -2*Math.PI, 2*Math.PI);
 params.view.float("lambda", 0.0, 0.1, -2*Math.PI, 2*Math.PI);
 params.view.float("distance", 3.0, 0.1, 0.0);
 
-params.choice("projection", 3, [ 'view', 'stereographic', 'orthographic', 'equiarea', 'equidistant' ]);
+params.enum("projection", 'view', [ 'view', 'stereographic', 'orthographic', 'equiarea', 'equidistant' ]);
+
+console.log(params.onzin);
 
 console.log(params.toJSON());
 

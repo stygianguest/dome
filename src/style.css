@@ -1,0 +1,38 @@
+
+a.icon {
+    text-decoration: none;
+    color: inherit;
+}
+
+.parameters {
+    font-family: monospace;
+    width: 30em;
+    background: #e3e3ea;
+    //border: 1pt solid black;
+    //border-radius: 4pt;
+}
+
+.parametersTitle {
+    background: #c3c3ca;
+    padding: 4pt;
+}
+
+.parameters dl {
+    padding: 4pt;
+}
+
+.parameterStruct {
+    //border: 1px solid navy;
+    font-family: monospace;
+}
+
+.parameterStructLabel {
+    font-weight:bold;
+}
+
+.parameterFieldLabel {
+}
+
+.parameterFieldInput {
+    //background: white;
+}

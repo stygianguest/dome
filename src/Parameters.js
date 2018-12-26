@@ -1,5 +1,7 @@
 'use strict';
 
+import './style.css';
+
 function makeRandomIdentifier(length, possible="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789") {
   var text = "";
 
@@ -40,38 +42,46 @@ class Parameter {
 
 export class Parameters {
 
-    constructor(id, title="", onchange=(c) => {}, superSection=null) {
+    constructor(id, onchange=(c) => {}, superSection=null) {
         this.broadcastID = makeRandomIdentifier(16);
         this.superSection = superSection;
         this.id = id;
-        this.title = title;
         this.parameters = new Map();
         this.onchange = onchange;
 
         this.element = document.createElement("div");
-
-        if (id != "" || title != "") {
-            let titleElement = document.createElement("div");
-            titleElement.innerText = title || id;
-            this.element.appendChild(titleElement);
-        }
+        this.element.classList.add('parameterStruct');
 
         if (this.superSection == null) {
+            this.element.classList.add('parameters');
+
             //this.channelName = makeRandomIdentifier(8);
             this.channelName = "asdf";
             this.channel = new BroadcastChannel(this.channelName);
             this.channel.onmessage = (msg) => { this.onBroadcastMessage(msg); };
 
+            let titleElement = document.createElement("div");
+            titleElement.classList.add('parametersTitle');
+            //titleElement.style.float = 'left';
+            titleElement.innerText = id;
+            this.element.appendChild(titleElement);
+
             let detach = document.createElement("a");
-            detach.innerText = "detach";
+            detach.style.float = 'right';
+            detach.classList.add("icon");
+            detach.innerText = "⇱";
             detach.href = makeParamURL(this.channelName);
             detach.target = "_blank"; // open in new window
             detach.onclick = () => { this.detach(); };
 
-            this.element.appendChild(detach);
+            titleElement.appendChild(detach);
+
         }
 
         this.element.id = id;
+
+        this.dl = document.createElement('dl');
+        this.element.appendChild(this.dl);
     }
 
     detach() {
@@ -80,14 +90,15 @@ export class Parameters {
     }
 
     float(id, value=0., step=0.1, min=null, max=null, description="") {
-        let elem = document.createElement("div");
-        this.element.appendChild(elem);
-
-        let labelElem = elem.appendChild(document.createElement("label"));
-        labelElem.innerText = `${id} = `;
-
-        let inputElem = elem.appendChild(document.createElement("input"));
+        let dt = this.dl.appendChild(document.createElement("dt"));
+        let labelElem = dt.appendChild(document.createElement("label"));
+        labelElem.innerText = id;
+        labelElem.classList.add('parameterFieldLabel');
+        
+        let dd = this.dl.appendChild(document.createElement("dd"));
+        let inputElem = dd.appendChild(document.createElement("input"));
         inputElem.id = `${this.element.id}/${id}`;
+        inputElem.classList.add('parameterFieldInput');
 
         labelElem.htmlFor = inputElem.id;
 
@@ -123,10 +134,16 @@ export class Parameters {
     }
 
     section(id, title="") {
-        let subSection = new Parameters(id, title || id, this.onchange, this);
+        //TODO: rename to struct
+
+        let subSection = new Parameters(id, this.onchange, this);
         this.parameters.set(id, subSection);
 
-        this.element.appendChild(subSection.element);
+        let dt = this.dl.appendChild(document.createElement("dt"));
+        dt.innerText = title || id;
+
+        let dd = this.dl.appendChild(document.createElement("dd"));
+        dd.appendChild(subSection.element);
 
         Object.defineProperty(this, id, {
             value: subSection,
@@ -136,7 +153,52 @@ export class Parameters {
         return subSection;
     }
 
+    enum(id, value, choices) {
+        let dt = this.dl.appendChild(document.createElement("dt"));
+        dt.classList.add('parameterFieldLabel');
+        dt.innerText = id;
+
+        let dd = this.dl.appendChild(document.createElement("dd"));
+        let select = dd.appendChild(document.createElement("select"));
+        select.classList.add('parameterFieldInput');
+        select.id = id;
+
+        for (let choice of choices) {
+            let option = select.appendChild(document.createElement("option"));
+            option.value = choice;
+            option.innerText = choice;
+        }
+
+        select.value = value;
+
+        select.onchange = () => {
+            this.onchange({id, value: select.value})
+            this.broadcastUpdate({id, value: select.value})
+        };
+
+        let get = () => {
+            return select.value;            
+        };
+
+        let set = (value) => {
+            select.value = value;
+            this.onchange({id, value})
+        };
+
+        Object.defineProperty(this, id, { 
+            get, 
+            set(value) {
+                set(value);
+                this.broadcastUpdate({id, value});
+            }
+        });
+
+        this.parameters.set(id, new Parameter("enum", id, get, set, [choices]));
+    }
+
     choice(id, value, choices, label="") {
+        //TODO: rework to make these into tabs with effectively a variant type
+        //      for the tabs see e.g. https://codepen.io/istavros/pen/hiuvF
         let element = document.createElement("div");
         element.id = `${id}-group`;
 
