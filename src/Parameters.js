@@ -13,7 +13,7 @@ function makeRandomIdentifier(length, possible="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdef
 
 function makeParamURL(channelName) {
   let paramURL = new URL(document.location.href);
-  paramURL.pathname = "dist/param.html";
+  paramURL.pathname = "param.html";
   //let searchParams = new URLSearchParams(paramURL.search);
   paramURL.searchParams.set("channelName", channelName);
   return paramURL;
