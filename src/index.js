@@ -20,12 +20,14 @@ document.body.appendChild(params.element);
 
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
 
-params.section("view");
-params.view.float("phi", -0.35, 0.1, -2 * Math.PI, 2 * Math.PI);
-params.view.float("lambda", 0.0, 0.1, -2 * Math.PI, 2 * Math.PI);
-params.view.float("distance", 3.0, 0.1, 0.0);
+params.section("sphere")
+params.sphere.float("phi", 0.0, 0.1, -2 * Math.PI, 2 * Math.PI);
+params.sphere.float("lambda", 0.0, 0.1, -2 * Math.PI, 2 * Math.PI);
 
-params.enum("projection", 'view', ['view', 'stereographic', 'orthographic', 'equiarea', 'equidistant']);
+params.section("view");
+params.view.float("distance", 2.3, 0.1, 0.0);
+
+params.enum("projection", 'stereographic', ['view', 'stereographic', 'orthographic', 'equiarea', 'equidistant']);
 
 var textureOffset = vec2.fromValues(0.0, 0.0);
 var textureScale = vec2.fromValues(1.0, 1.0);
@@ -56,7 +58,7 @@ document.body.appendChild(params.element);
 
 let uniforms = {
     projectionMatrix: mat4.create(),
-    modelViewMatrix: mat4.create(),
+    modelMatrix: mat4.create(),
     textureMatrix: mat3.create(),
     aspectRatio: renderer.element.clientHeight / renderer.element.clientWidth, //FIXME: is width/height the typical way?
     tex: renderer.createTexture(cubetexture, () => {
@@ -80,7 +82,7 @@ function createHemisphere(projection) {
           in vec4 vertices;
           in vec2 uvs;
 
-          uniform mat4 modelViewMatrix;
+          uniform mat4 modelMatrix;
 
           ${projection}
 
@@ -88,7 +90,7 @@ function createHemisphere(projection) {
           uniform mat3 textureMatrix;
 
           void main(void) {
-            gl_Position = projection(vertices);
+            gl_Position = projection(modelMatrix * vertices);
             uv = vec2(textureMatrix * vec3(uvs, 1.));
           }
         `,
@@ -153,11 +155,11 @@ let dot = renderer.createObject(
 
       in vec4 vertices;
 
-      uniform mat4 modelViewMatrix;
+      uniform mat4 modelMatrix;
       uniform mat4 projectionMatrix;
 
       void main(void) {
-        gl_Position = projectionMatrix * vertices;
+        gl_Position = projectionMatrix * modelMatrix * vertices;
       }
     `,
     `#version 300 es
@@ -192,15 +194,22 @@ requestAnimationFrame(draw);
 function draw() {
     renderer.clear(0, 0, 0.2, 1);
 
+    { // rotate the object
+        let m = mat4.create();
+        mat4.rotate(m, m, params.sphere.phi, [1, 0, 0]);
+        mat4.rotate(m, m, params.sphere.lambda, [0, 1, 0]);
+        uniforms.modelMatrix = m;
+    }
+
     //TODO: reuse existing matrices rather than recreate them
     if (params.projection === "stereographic") {
         const aspect = 1.0 / uniforms.aspectRatio;
-        const zNear = 0.0;
-        const zFar = 100.0;
         const phi = -Math.PI;
         const lambda = 0;
         const distance = params.view.distance;
         const fieldOfView = Math.atan2(1.0, distance) * 2.0;
+        const zNear = distance;
+        const zFar = 100.0;
 
         let m = mat4.create();
         mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
@@ -236,7 +245,7 @@ function draw() {
         hemisphereEquiarea.draw();
     } else /*if (params.projection === "view")*/ {
         uniforms.projectionMatrix =
-            createCameraMatrix(params.view.distance, params.view.phi, params.view.lambda);
+            createCameraMatrix(params.view.distance, 0.0, 0.0);//params.sphere.phi, params.sphere.lambda);
         hemisphereMatrixProjection.draw();
     }
 
@@ -259,10 +268,10 @@ function cameraControls(canvas) {
     }, false);
     canvas.addEventListener("mousemove", function (e) {
         if (mouseIsDown) {
-            params.view.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
-            params.view.lambda %= Math.PI * 2;
-            params.view.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
-            params.view.phi %= Math.PI * 2;
+            params.sphere.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
+            params.sphere.lambda %= Math.PI * 2;
+            params.sphere.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
+            params.sphere.phi %= Math.PI * 2;
         }
         lastPosition = {
             x: e.clientX,
