@@ -3,6 +3,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
     entry: {
+        textures: './src/textures.js',
         index: './src/index.js',
         param: './src/param.js'
     },
@@ -39,6 +40,10 @@ module.exports = {
         template: "./src/param.html",
         chunks: ['param'],
         filename: './param.html'
+      }),
+      new HtmlWebpackPlugin({
+        chunks: ['textures'],
+        filename: './textures.html'
       })
     ],
     devServer: {
