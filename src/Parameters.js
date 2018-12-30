@@ -69,6 +69,9 @@ export class Parameters {
 
             titleElement.appendChild(detach);
 
+            this.channelName = makeRandomIdentifier(8);
+            this.channel = new BroadcastChannel(this.channelName);
+            this.channel.onmessage = (msg) => { this.onBroadcastMessage(msg); };
         }
 
         this.element.id = id;
@@ -78,12 +81,6 @@ export class Parameters {
     }
 
     detach() {
-        if (this.channel == undefined) {
-            this.channelName = makeRandomIdentifier(8);
-            this.channel = new BroadcastChannel(this.channelName);
-            this.channel.onmessage = (msg) => { this.onBroadcastMessage(msg); };
-        }
-        
         let width = Math.max(200, this.element.clientWidth);
         let height = Math.max(300, this.element.clientHeight);
 
