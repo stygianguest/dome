@@ -33,12 +33,12 @@ module.exports = {
       new HtmlWebpackPlugin({
         template: "./src/index.html",
         chunks: ['index'],
-        filename: './dist/index.html'
+        filename: './index.html'
       }),
       new HtmlWebpackPlugin({
         template: "./src/param.html",
         chunks: ['param'],
-        filename: './dist/param.html'
+        filename: './param.html'
       })
     ],
     devServer: {
