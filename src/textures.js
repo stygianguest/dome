@@ -1,7 +1,7 @@
 'use strict';
 
 //import cubetexture from './images/cubetexture.png';
-import cubetexture from './images/Pijlen.png';
+import cubetexture from './images/earth_latlong.jpg';
 import {
     mat4,
     mat3,
@@ -76,7 +76,7 @@ let sphere = renderer.createObject(
     `#version 300 es
 
       in vec4 vertices;
-      out highp vec2 uv;
+      out highp vec4 vertex;
 
       uniform mat4 modelMatrix;
       uniform mat4 projectionMatrix;
@@ -84,21 +84,22 @@ let sphere = renderer.createObject(
       uniform mat3 textureMatrix;
 
       void main(void) {
-        float theta = asin(vertices.z);
-        float lambda = atan(vertices.y, vertices.x);
-        uv = vec2(theta / ${Math.PI} + .5, .5 * lambda / ${Math.PI} + 0.5);
-
         gl_Position = projectionMatrix * modelMatrix * vertices;
+        vertex = vertices;
       }
     `,
     `#version 300 es
 
       uniform sampler2D tex;
       
-      in highp vec2 uv;
+      in highp vec4 vertex;
       out lowp vec4 color;
 
       void main(void) {
+        highp float theta = asin(vertex.z);
+        highp float lambda = atan(vertex.y, vertex.x);
+        highp vec2 uv = vec2(.5 * lambda / ${Math.PI} + 0.5, theta / ${Math.PI} + 0.5);
+
         color = texture(tex, uv);
         //color = vec4(uv, 1., 1.);
       }
