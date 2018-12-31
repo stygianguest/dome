@@ -1,7 +1,7 @@
 'use strict';
 
 //import cubetexture from './images/cubetexture.png';
-import cubetexture from './images/fisheye_grid.gif';
+import cubetexture from './images/Pijlen.png';
 import {
     mat4,
     mat3,
@@ -71,52 +71,39 @@ let uniforms = {
 }
 
 let sphere = renderer.createObject(
-    geometry.uvHemisphere(24, 64),
+    geometry.uvSphere(24, 64),
     uniforms,
     `#version 300 es
 
       in vec4 vertices;
-      in vec2 uvs;
+      out highp vec2 uv;
 
       uniform mat4 modelMatrix;
       uniform mat4 projectionMatrix;
 
-      out highp vec2 uv;
       uniform mat3 textureMatrix;
 
       void main(void) {
+        float theta = asin(vertices.z);
+        float lambda = atan(vertices.y, vertices.x);
+        uv = vec2(theta / ${Math.PI} + .5, .5 * lambda / ${Math.PI} + 0.5);
+
         gl_Position = projectionMatrix * modelMatrix * vertices;
-        uv = vec2(textureMatrix * vec3(uvs, 1.));
       }
     `,
     `#version 300 es
 
-      in highp vec2 uv;
       uniform sampler2D tex;
-
+      
+      in highp vec2 uv;
       out lowp vec4 color;
 
       void main(void) {
         color = texture(tex, uv);
+        //color = vec4(uv, 1., 1.);
       }
     `);
 
-function createCameraMatrix(distance, phi, lambda) {
-    //FIXME: are the angles actually X and Y? (those are not the axis) let's call them  phi and lambda
-
-    const fieldOfView = 45 * Math.PI / 180; // in radians
-    const aspect = 1. / uniforms.aspectRatio;
-    const zNear = 0.1;
-    const zFar = 100.0;
-
-    let m = mat4.create();
-    mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
-    mat4.translate(m, m, [0., 0., -distance]);
-    mat4.rotate(m, m, phi, [1, 0, 0]);
-    mat4.rotate(m, m, lambda, [0, 1, 0]);
-
-    return m;
-}
 
 cameraControls(renderer.element);
 requestAnimationFrame(draw);
