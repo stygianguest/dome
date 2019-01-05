@@ -1,19 +1,27 @@
 
 a.icon {
     text-decoration: none;
-    color: inherit;
+    //color: inherit;
 }
 
-.parameters {
+.window {
+    resize: both;
+    overflow: auto;
     font-family: monospace;
     //width: 30em;
     background: #e3e3ea;
     //border: 1pt solid black;
     //border-radius: 4pt;
+    margin: 4pt;
+    display: inline-block;
 }
 
-.parametersTitle {
+.windowTitle {
     background: #c3c3ca;
+    padding: 4pt;
+}
+
+.windowContents {
     padding: 4pt;
 }
 

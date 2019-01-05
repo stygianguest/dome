@@ -32,35 +32,16 @@ params.enum("projection", 'stereographic', ['view', 'stereographic', 'orthograph
 var textureOffset = vec2.fromValues(0.0, 0.0);
 var textureScale = vec2.fromValues(1.0, 1.0);
 
-let renderer = new Renderer(640, 480);
+let renderer = new Renderer("view", 640, 480);
 
 document.body.appendChild(renderer.element);
 document.body.appendChild(params.element);
-
-{ // add fullscreen button
-    function handleKeypress(event) {
-        if (event.keyCode === 27) {
-            document.exitFullscreen();
-        }
-    }
-
-    let fullscreen = document.createElement("a");
-    fullscreen.innerText = "fullscreen";
-    fullscreen.href = '#';
-    fullscreen.onclick = () => {
-        renderer.toggleFullscreen();
-    };
-    document.body.appendChild(fullscreen);
-
-    document.addEventListener("keypress", handleKeypress, false);
-}
-
 
 let uniforms = {
     projectionMatrix: mat4.create(),
     modelMatrix: mat4.create(),
     textureMatrix: mat3.create(),
-    aspectRatio: renderer.element.clientHeight / renderer.element.clientWidth, //FIXME: is width/height the typical way?
+    aspectRatio: renderer.canvas.clientHeight / renderer.canvas.clientWidth, //FIXME: is width/height the typical way?
     tex: renderer.createTexture(cubetexture, () => {
         requestAnimationFrame(draw)
     })
@@ -188,7 +169,7 @@ function createCameraMatrix(distance, phi, lambda) {
     return m;
 }
 
-cameraControls(renderer.element);
+cameraControls(renderer.canvas);
 requestAnimationFrame(draw);
 
 function draw() {

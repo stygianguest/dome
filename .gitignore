@@ -71,6 +71,10 @@ typings/
 
 # Serverless directories
 .serverless
+
+# output files
 package-lock.json
 dist/
+
+# OS specific stuff
 .DS_Store

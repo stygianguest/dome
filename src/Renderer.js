@@ -2,12 +2,57 @@
 
 export default class {
 
-    constructor(width, height) {
-        this.element = document.createElement("canvas");
-        this.element.width = width;
-        this.element.height = height;
+    constructor(id, width, height) {
+        this.element = document.createElement("div");
+        this.element.classList.add('window');
+        this.element.style.resize = 'none';
 
-        this.gl = this.element.getContext('webgl2');
+        { // 'window' decoration
+        
+            // add title
+            let titleElement = document.createElement("div");
+            titleElement.classList.add('windowTitle');
+            titleElement.innerText = id;
+            this.element.appendChild(titleElement);
+
+            let fullscreen = document.createElement("a");
+            fullscreen.innerText = "[fullscreen]";
+            fullscreen.style.float = 'right';
+            fullscreen.href = '#';
+            fullscreen.onclick = () => {
+                this.toggleFullscreen();
+            };
+            fullscreen.classList.add("icon");
+            //document.addEventListener("keypress", handleKeypress, false);
+            titleElement.appendChild(fullscreen);
+
+            //let detach = document.createElement("a");
+            //detach.style.float = 'right';
+            //detach.innerText = "⇱";
+            //detach.href = '#';
+            //detach.onclick = () => { this.detach(); };
+
+            //titleElement.appendChild(detach);
+
+        }
+
+        this.canvas = document.createElement("canvas");
+        this.canvas.id = id;
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this.element.appendChild(this.canvas);
+
+        this.canvas.fullscreenElement = this.canvas.fullscreenElement 
+            || this.canvas.mozFullscreenElement
+            || this.canvas.msFullscreenElement 
+            || this.canvas.webkitFullscreenDocument;
+
+        this.canvas.requestFullscreen = this.canvas.requestFullscreen 
+            || this.canvas.mozRequestFullScreen
+            || this.canvas.msRequestFullscreen
+            || this.canvas.webkitRequestFullscreen;
+
+        this.gl = this.canvas.getContext('webgl2');
 
         // TODO: nicer error?
         if (!this.gl) {
@@ -177,18 +222,8 @@ export default class {
     }
 
     toggleFullscreen() {
-        this.element.fullscreenElement = this.element.fullscreenElement 
-            || this.element.mozFullscreenElement
-            || this.element.msFullscreenElement 
-            || this.element.webkitFullscreenDocument;
-
-        this.element.requestFullscreen = this.element.requestFullscreen 
-            || this.element.mozRequestFullScreen
-            || this.element.msRequestFullscreen
-            || this.element.webkitRequestFullscreen;
-
         if (!document.fullscreenElement) {
-            this.element.requestFullscreen().then({}).catch(err => {
+            this.canvas.requestFullscreen().then({}).catch(err => {
                     alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
                     });
         } else {

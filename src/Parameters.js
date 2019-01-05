@@ -53,17 +53,17 @@ export class Parameters {
         this.element.classList.add('parameterStruct');
 
         if (this.superSection == null) {
-            this.element.classList.add('parameters');
+            this.element.classList.add('window');
 
             let titleElement = document.createElement("div");
-            titleElement.classList.add('parametersTitle');
+            titleElement.classList.add('windowTitle');
             titleElement.innerText = id;
             this.element.appendChild(titleElement);
 
             let detach = document.createElement("a");
             detach.style.float = 'right';
             detach.classList.add("icon");
-            detach.innerText = "⇱";
+            detach.innerText = "[detach]";
             detach.href = '#';
             detach.onclick = () => { this.detach(); };
 

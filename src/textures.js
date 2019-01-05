@@ -30,29 +30,10 @@ params.view.float("distance", 2.3, 0.1, 0.0);
 var textureOffset = vec2.fromValues(0.0, 0.0);
 var textureScale = vec2.fromValues(1.0, 1.0);
 
-let renderer = new Renderer(640, 480);
+let renderer = new Renderer("textures", 640, 480);
 
 document.body.appendChild(renderer.element);
 document.body.appendChild(params.element);
-
-{ // add fullscreen button
-    function handleKeypress(event) {
-        if (event.keyCode === 27) {
-            document.exitFullscreen();
-        }
-    }
-
-    let fullscreen = document.createElement("a");
-    fullscreen.innerText = "fullscreen";
-    fullscreen.href = '#';
-    fullscreen.onclick = () => {
-        renderer.toggleFullscreen();
-    };
-    document.body.appendChild(fullscreen);
-
-    document.addEventListener("keypress", handleKeypress, false);
-}
-
 
 let uniforms = {
     projectionMatrix: mat4.create(),
