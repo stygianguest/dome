@@ -2,21 +2,16 @@
 
 //import cubetexture from './images/cubetexture.png';
 import cubetexture from './images/fisheye_grid.gif';
-import {
-    mat4,
-    mat3,
-    vec2
-} from 'gl-matrix';
-import {
-    Parameters
-} from './Parameters.js';
+import { mat4, mat3, vec2 } from 'gl-matrix';
+import { Parameters } from './Parameters.js';
 import Renderer from './Renderer.js';
 import geometry from './geometry.js';
 
 let params = new Parameters("params", (x, v) => {
     requestAnimationFrame(draw);
 });
-document.body.appendChild(params.element);
+
+const searchParams = new URLSearchParams(window.location.search);
 
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
 
@@ -34,8 +29,17 @@ var textureScale = vec2.fromValues(1.0, 1.0);
 
 let renderer = new Renderer("view", 640, 480);
 
-document.body.appendChild(renderer.element);
-document.body.appendChild(params.element);
+if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
+    document.body.appendChild(renderer.element);
+    document.body.appendChild(params.element);
+} else {
+    renderer.canvas.style.display = 'block';
+    renderer.canvas.style.width = '100vw';
+    renderer.canvas.style.height = '100vh';
+    document.body.style.margin = '0px';
+    document.body.appendChild(renderer.canvas);
+}
+
 
 let uniforms = {
     projectionMatrix: mat4.create(),

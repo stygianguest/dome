@@ -227,9 +227,10 @@ export default class {
 
     toggleFullscreen() {
         if (!document.fullscreenElement) {
-            this.canvas.requestFullscreen().then({}).catch(err => {
+            this.canvas.requestFullscreen();/* TODO: isn't implemented in the browsers yet
+                .then({}).catch(err => {
                     alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-                    });
+                    });*/
         } else {
             document.exitFullscreen();
         }
