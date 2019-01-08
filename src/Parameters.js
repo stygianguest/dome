@@ -92,6 +92,47 @@ export class Parameters {
         //this.element.style.display = 'none';
     }
 
+    bool(id, value=false) {
+        let dt = this.dl.appendChild(document.createElement("dt"));
+        let labelElem = dt.appendChild(document.createElement("label"));
+        labelElem.innerText = id;
+        labelElem.classList.add('parameterFieldLabel');
+        
+        let dd = this.dl.appendChild(document.createElement("dd"));
+        let inputElem = dd.appendChild(document.createElement("input"));
+        inputElem.id = `${this.element.id}/${id}`;
+        inputElem.classList.add('parameterFieldInput');
+
+        labelElem.htmlFor = inputElem.id;
+
+        inputElem.type = "checkbox";
+        inputElem.checked = value;
+
+        inputElem.onchange = (e) => {
+            let c = {id, 'value': e.target.checked};
+            this.onchange(c);
+            this.broadcastUpdate(c)
+        };
+            
+        let get = () => { return inputElem.checked; };
+        let set = (value) => {
+            inputElem.checked = value;
+            this.onchange({id, value});
+        };
+
+        Object.defineProperty(this, id, { 
+            get, 
+            set(value) {
+                set(value);
+                this.broadcastUpdate({id, value});
+            }
+        });
+
+        this.parameters.set(id, new Parameter("bool", id, get, set, []));
+
+        return this[id];
+    }
+
     float(id, value=0., step=0.1, min=null, max=null, description="") {
         let dt = this.dl.appendChild(document.createElement("dt"));
         let labelElem = dt.appendChild(document.createElement("label"));
