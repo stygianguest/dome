@@ -2,19 +2,21 @@
 
 export default class {
 
-    constructor(id, width, height) {
+    constructor(id) {
         this.element = document.createElement("div");
         this.element.classList.add('window');
-        this.element.style.resize = 'none';
+
+        //this.element.style.resize = 'none';
 
         { // 'window' decoration
         
             // add title
-            let titleElement = document.createElement("div");
-            titleElement.classList.add('windowTitle');
-            titleElement.innerText = id;
-            this.element.appendChild(titleElement);
+            this.titleElement = document.createElement("div");
+            this.titleElement.classList.add('windowTitle');
+            this.titleElement.innerText = id;
+            this.element.appendChild(this.titleElement);
 
+            // fullscreen 'button'
             let fullscreen = document.createElement("a");
             fullscreen.innerText = "[fullscreen]";
             fullscreen.style.float = 'right';
@@ -23,23 +25,13 @@ export default class {
                 this.toggleFullscreen();
             };
             fullscreen.classList.add("icon");
-            //document.addEventListener("keypress", handleKeypress, false);
-            titleElement.appendChild(fullscreen);
-
-            //let detach = document.createElement("a");
-            //detach.style.float = 'right';
-            //detach.innerText = "⇱";
-            //detach.href = '#';
-            //detach.onclick = () => { this.detach(); };
-
-            //titleElement.appendChild(detach);
-
+            this.titleElement.appendChild(fullscreen);
         }
 
         this.canvas = document.createElement("canvas");
         this.canvas.id = id;
-        this.canvas.width = width;
-        this.canvas.height = height;
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
         this.element.appendChild(this.canvas);
 
         this.canvas.fullscreenElement = this.canvas.fullscreenElement 
@@ -60,7 +52,7 @@ export default class {
           return;
         }
     }
-
+    
     createArrayBuffer(dataArray, isElementArray=false) {
         const buffer = this.gl.createBuffer();
         let target = isElementArray ? this.gl.ELEMENT_ARRAY_BUFFER : this.gl.ARRAY_BUFFER;
@@ -219,6 +211,18 @@ export default class {
         };
 
         return { uniforms: uniforms, draw: draw };
+    }
+
+    resize(width = null, height = null) {
+        let newWidth = width || this.canvas.clientWidth;
+        let newHeight = height || this.canvas.clientHeight;
+
+        if (this.canvas.width != newWidth || this.canvas.height != newHeight) {
+            this.canvas.width = newWidth;
+            this.canvas.height = newHeight;
+            this.gl.viewport(0, 0, newWidth, newHeight);
+        }
+
     }
 
     toggleFullscreen() {

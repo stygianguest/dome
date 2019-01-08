@@ -13,10 +13,11 @@ import {
 import Renderer from './Renderer.js';
 import geometry from './geometry.js';
 
+const searchParams = new URLSearchParams(window.location.search);
+
 let params = new Parameters("params", (x, v) => {
     requestAnimationFrame(draw);
 });
-document.body.appendChild(params.element);
 
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
 
@@ -30,16 +31,24 @@ params.view.float("distance", 2.3, 0.1, 0.0);
 var textureOffset = vec2.fromValues(0.0, 0.0);
 var textureScale = vec2.fromValues(1.0, 1.0);
 
-let renderer = new Renderer("textures", 640, 480);
+let renderer = new Renderer("textures");
 
-document.body.appendChild(renderer.element);
-document.body.appendChild(params.element);
+if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
+    document.body.appendChild(renderer.element);
+    document.body.appendChild(params.element);
+} else {
+    renderer.canvas.style.display = 'block';
+    renderer.canvas.style.width = '100vw';
+    renderer.canvas.style.height = '100vh';
+    document.body.style.margin = '0px';
+    document.body.appendChild(renderer.canvas);
+}
+
 
 let uniforms = {
     projectionMatrix: mat4.create(),
     modelMatrix: mat4.create(),
     textureMatrix: mat3.create(),
-    aspectRatio: renderer.element.clientHeight / renderer.element.clientWidth, //FIXME: is width/height the typical way?
     tex: renderer.createTexture(cubetexture, () => {
         requestAnimationFrame(draw)
     })
@@ -72,7 +81,7 @@ let sphere = renderer.createObject(
     `#version 300 es
 
       uniform sampler2D tex;
-      
+
       in highp vec4 vertex;
       out lowp vec4 color;
 
@@ -87,10 +96,11 @@ let sphere = renderer.createObject(
     `);
 
 
-cameraControls(renderer.element);
+cameraControls(renderer.canvas);
 requestAnimationFrame(draw);
 
 function draw() {
+    renderer.resize();
     renderer.clear(0, 0, 0.2, 1);
 
     { // rotate the object
@@ -101,7 +111,7 @@ function draw() {
     }
 
     //TODO: reuse existing matrices rather than recreate them
-    const aspect = 1.0 / uniforms.aspectRatio;
+    const aspect = renderer.canvas.clientWidth / renderer.canvas.clientHeight;
     const phi = -Math.PI;
     const lambda = 0;
     const distance = params.view.distance;

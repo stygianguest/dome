@@ -312,6 +312,13 @@ export class Parameters {
         }
     }
 
+    show(doShow = true) {
+        if (doShow) {
+            this.element.style.display = 'inherit';
+        } else {
+            this.element.style.display = 'none';
+        }
+    }
 }
 
 export function ParametersOfJSON(json) {
