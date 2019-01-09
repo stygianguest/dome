@@ -149,8 +149,9 @@ export class Parameters {
         inputElem.description = description;
 
         inputElem.onchange = () => {
-            this.onchange({id, value});
-            this.broadcastUpdate({id, 'value': parseFloat(inputElem.value)})
+            let change = {id, 'value': valueFloat(inputElem.value)};
+            this.onchange(change);
+            this.broadcastUpdate(change);
         };
             
         let get = () => { return parseFloat(inputElem.value); };
@@ -160,6 +161,27 @@ export class Parameters {
         };
 
         return this.addNewParameter("float", id, inputElem, get, set, [step, min, max, description]);
+    }
+
+    string(id, value="") {
+        let inputElem = document.createElement("input");
+
+        inputElem.type = "text";
+        inputElem.value = value;
+
+        inputElem.onchange = () => {
+            let change = {id, 'value': inputElem.value};
+            this.onchange(change);
+            this.broadcastUpdate(change);
+        };
+            
+        let get = () => { return inputElem.value; };
+        let set = (value) => {
+            inputElem.value = value;
+            this.onchange({id, value});
+        };
+
+        return this.addNewParameter("string", id, inputElem, get, set, []);
     }
 
     section(id, title="") {
