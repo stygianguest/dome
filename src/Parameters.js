@@ -92,19 +92,34 @@ export class Parameters {
         //this.element.style.display = 'none';
     }
 
-    bool(id, value=false) {
+    //TODO: make addNewParameter private?
+    addNewParameter(type, id, inputElem, get, set, args) {
         let dt = this.dl.appendChild(document.createElement("dt"));
         let labelElem = dt.appendChild(document.createElement("label"));
         labelElem.innerText = id;
         labelElem.classList.add('parameterFieldLabel');
         
         let dd = this.dl.appendChild(document.createElement("dd"));
-        let inputElem = dd.appendChild(document.createElement("input"));
-        inputElem.id = `${this.element.id}/${id}`;
-        inputElem.classList.add('parameterFieldInput');
+        dd.appendChild(inputElem);
 
+        inputElem.id = `${this.element.id}/${id}`;
         labelElem.htmlFor = inputElem.id;
 
+        Object.defineProperty(this, id, { 
+            get, 
+            set(value) {
+                set(value);
+                this.broadcastUpdate({id, value});
+            }
+        });
+
+        this.parameters.set(id, new Parameter(type, id, get, set, args));
+
+        return this[id];
+    }
+
+    bool(id, value=false) {
+        let inputElem = document.createElement("input");
         inputElem.type = "checkbox";
         inputElem.checked = value;
 
@@ -120,31 +135,11 @@ export class Parameters {
             this.onchange({id, value});
         };
 
-        Object.defineProperty(this, id, { 
-            get, 
-            set(value) {
-                set(value);
-                this.broadcastUpdate({id, value});
-            }
-        });
-
-        this.parameters.set(id, new Parameter("bool", id, get, set, []));
-
-        return this[id];
+        return this.addNewParameter("bool", id, inputElem, get, set, []);
     }
 
     float(id, value=0., step=0.1, min=null, max=null, description="") {
-        let dt = this.dl.appendChild(document.createElement("dt"));
-        let labelElem = dt.appendChild(document.createElement("label"));
-        labelElem.innerText = id;
-        labelElem.classList.add('parameterFieldLabel');
-        
-        let dd = this.dl.appendChild(document.createElement("dd"));
-        let inputElem = dd.appendChild(document.createElement("input"));
-        inputElem.id = `${this.element.id}/${id}`;
-        inputElem.classList.add('parameterFieldInput');
-
-        labelElem.htmlFor = inputElem.id;
+        let inputElem = document.createElement("input");
 
         inputElem.type = "number";
         inputElem.value = value;
@@ -164,17 +159,7 @@ export class Parameters {
             this.onchange({id, value});
         };
 
-        Object.defineProperty(this, id, { 
-            get, 
-            set(value) {
-                set(value);
-                this.broadcastUpdate({id, value});
-            }
-        });
-
-        this.parameters.set(id, new Parameter("float", id, get, set, [step, min, max, description]));
-
-        return this[id];
+        return this.addNewParameter("float", id, inputElem, get, set, [step, min, max, description]);
     }
 
     section(id, title="") {
