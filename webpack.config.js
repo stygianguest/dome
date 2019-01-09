@@ -3,7 +3,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
     entry: {
-        textures: './src/textures.js',
+        planetviewer: './src/planetviewer.js',
         index: './src/index.js',
         param: './src/param.js'
     },
@@ -42,8 +42,8 @@ module.exports = {
         filename: './param.html'
       }),
       new HtmlWebpackPlugin({
-        chunks: ['textures'],
-        filename: './textures.html'
+        chunks: ['planetviewer'],
+        filename: './planetviewer.html'
       })
     ],
     devServer: {
