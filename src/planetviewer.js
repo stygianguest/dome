@@ -1,7 +1,5 @@
 'use strict';
 
-//import cubetexture from './images/cubetexture.png';
-import cubetexture from './images/earth_latlong.jpg';
 import {
     mat4,
     mat3,
@@ -15,27 +13,34 @@ import geometry from './geometry.js';
 
 const searchParams = new URLSearchParams(window.location.search);
 
-let params = new Parameters("params", (x, v) => {
+let params = new Parameters("params", (update) => {
     requestAnimationFrame(draw);
 });
 
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
 
 params.section("sphere")
-params.sphere.float("phi", 0.0, 0.1, -2 * Math.PI, 2 * Math.PI);
-params.sphere.float("lambda", 0.0, 0.1, -2 * Math.PI, 2 * Math.PI);
+params.sphere.float("phi", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
+params.sphere.float("lambda", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
 
 params.section("view");
 params.view.float("distance", 2.3, 0.1, 0.0);
 
-var textureOffset = vec2.fromValues(0.0, 0.0);
-var textureScale = vec2.fromValues(1.0, 1.0);
+let planet = new Parameters("planet", () => {
+    uniforms.tex = renderer.createTexture(planet.texture, () => {
+        requestAnimationFrame(draw)
+    })
+    requestAnimationFrame(draw);
+});
+planet.string("texture", "earth/earth_daymap.jpg");
+
 
 let renderer = new Renderer("textures");
 
 if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
     document.body.appendChild(renderer.element);
     document.body.appendChild(params.element);
+    document.body.appendChild(planet.element);
 } else {
     renderer.canvas.style.display = 'block';
     renderer.canvas.style.width = '100vw';
@@ -44,21 +49,13 @@ if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
     document.body.appendChild(renderer.canvas);
 }
 
-
 let uniforms = {
     projectionMatrix: mat4.create(),
     modelMatrix: mat4.create(),
-    textureMatrix: mat3.create(),
-    tex: renderer.createTexture(cubetexture, () => {
+    tex: renderer.createTexture(planet.texture, () => {
         requestAnimationFrame(draw)
     })
 };
-
-{
-    // set texture transformation
-    mat3.translate(uniforms.textureMatrix, uniforms.textureMatrix, textureOffset);
-    mat3.scale(uniforms.textureMatrix, uniforms.textureMatrix, textureScale);
-}
 
 let sphere = renderer.createObject(
     geometry.uvSphere(24, 64),
@@ -70,8 +67,6 @@ let sphere = renderer.createObject(
 
       uniform mat4 modelMatrix;
       uniform mat4 projectionMatrix;
-
-      uniform mat3 textureMatrix;
 
       void main(void) {
         gl_Position = projectionMatrix * modelMatrix * vertices;
@@ -91,7 +86,6 @@ let sphere = renderer.createObject(
         highp vec2 uv = vec2(.5 * lambda / ${Math.PI} + 0.5, theta / ${Math.PI} + 0.5);
 
         color = texture(tex, uv);
-        //color = vec4(uv, 1., 1.);
       }
     `);
 
