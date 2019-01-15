@@ -149,7 +149,7 @@ export class Parameters {
         inputElem.description = description;
 
         inputElem.onchange = () => {
-            let change = {id, 'value': valueFloat(inputElem.value)};
+            let change = {id, 'value': parseFloat(inputElem.value)};
             this.onchange(change);
             this.broadcastUpdate(change);
         };

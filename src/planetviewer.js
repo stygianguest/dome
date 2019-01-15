@@ -17,14 +17,17 @@ let params = new Parameters("params", (update) => {
     requestAnimationFrame(draw);
 });
 
+params.bool("devModeCamera", false);
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
 
 params.section("sphere")
 params.sphere.float("phi", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
 params.sphere.float("lambda", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
 
-params.section("view");
-params.view.float("distance", 2.3, 0.1, 0.0);
+params.section("camera");
+params.camera.float("distance", 3.0, 0.1, 0.0);
+params.camera.float("phi", -0.7, 0.1, -2 * Math.PI, 2 * Math.PI);
+params.camera.float("lambda", 0.07, 0.1, -2 * Math.PI, 2 * Math.PI);
 
 let planet = new Parameters("planet", () => {
     uniforms.tex = renderer.createTexture(planet.texture, () => {
@@ -41,6 +44,7 @@ if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
     document.body.appendChild(renderer.element);
     document.body.appendChild(params.element);
     document.body.appendChild(planet.element);
+    params.devModeCamera = true;
 } else {
     renderer.canvas.style.display = 'block';
     renderer.canvas.style.width = '100vw';
@@ -97,6 +101,7 @@ function draw() {
     renderer.resize();
     renderer.clear(0, 0, 0.2, 1);
 
+    //TODO: reuse existing matrices rather than recreate them
     { // rotate the object
         let m = mat4.create();
         mat4.rotate(m, m, params.sphere.phi, [1, 0, 0]);
@@ -104,22 +109,39 @@ function draw() {
         uniforms.modelMatrix = m;
     }
 
-    //TODO: reuse existing matrices rather than recreate them
-    const aspect = renderer.canvas.clientWidth / renderer.canvas.clientHeight;
-    const phi = -Math.PI;
-    const lambda = 0;
-    const distance = params.view.distance;
-    const fieldOfView = Math.atan2(1.0, distance) * 2.0;
-    const zNear = distance;
-    const zFar = 100.0;
+    // set the camera matrix
+    if (params.devModeCamera) {
+        // TODO: just a different projection isn't good enough; we need to render to a
+        // canvas, and project that onto a sphere which is then rendered with
+        // this projection
+        const aspect = renderer.canvas.clientWidth / renderer.canvas.clientHeight;
+        const fieldOfView = 45 * Math.PI / 180; // in radians
+        const zNear = 0.1;
+        const zFar = 100.0;
 
-    let m = mat4.create();
-    mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
-    mat4.translate(m, m, [0., 0., -distance]);
-    mat4.rotate(m, m, phi, [1, 0, 0]);
-    mat4.rotate(m, m, lambda, [0, 1, 0]);
+        let m = mat4.create();
+        mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
+        mat4.translate(m, m, [0., 0., -params.camera.distance]);
+        mat4.rotate(m, m, params.camera.phi, [1, 0, 0]);
+        mat4.rotate(m, m, params.camera.lambda, [0, 1, 0]);
+        uniforms.projectionMatrix = m;
+    } else {
+        //TODO: reuse existing matrices rather than recreate them
+        const aspect = renderer.canvas.clientWidth / renderer.canvas.clientHeight;
+        const phi = -Math.PI;
+        const lambda = 0;
+        const distance = 2.3;
+        const fieldOfView = Math.atan2(1.0, distance) * 2.0;
+        const zNear = distance;
+        const zFar = 100.0;
 
-    uniforms.projectionMatrix = m;
+        let m = mat4.create();
+        mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
+        mat4.translate(m, m, [0., 0., -distance]);
+        mat4.rotate(m, m, phi, [1, 0, 0]);
+        mat4.rotate(m, m, lambda, [0, 1, 0]);
+        uniforms.projectionMatrix = m;
+    }
     sphere.draw();
 }
 
