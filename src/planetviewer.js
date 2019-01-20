@@ -80,35 +80,23 @@ const planetFragmentShader =
     `;
 
 class Planet {
-    constructor(name, renderer, onUpdate = () => {}) {
+    constructor(textures, renderer, onUpdate = () => {}) {
         this.renderer = renderer;
 
-        this.params = new Parameters(name, (change) => {
-            if (change.id == "albedo") {
-                this.uniforms.albedo = renderer.createTexture(this.params.albedo, onUpdate);
-            }
-            if (change.id == "emission") {
-                this.uniforms.emission = renderer.createTexture(this.params.emission, onUpdate);
-            }
-            if (change.id == "clouds") {
-                this.uniforms.clouds = renderer.createTexture(this.params.clouds, onUpdate);
-            }
+        this.params = new Parameters("planetParams", (change) => {
             onUpdate();
         });
 
         this.params.float("phi", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
         this.params.float("lambda", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
-        this.params.string("albedo", "earth/earth_daymap.jpg");
-        this.params.string("emission", "earth/earth_nightmap.jpg");
-        this.params.string("clouds", "earth/earth_clouds.jpg");
 
-        //TODO: can we join params and uniforms? would need 'texture' parameter
+        //TODO: can we join this.params and this.uniforms? would need 'texture' parameter
         this.uniforms = {
             projectionMatrix: mat4.create(),
             modelMatrix: mat4.create(),
-            albedo: renderer.createTexture(this.params.albedo, onUpdate),
-            emission: renderer.createTexture(this.params.emission, onUpdate),
-            clouds: renderer.createTexture(this.params.clouds, onUpdate)
+            albedo: renderer.createTexture(textures.albedo, onUpdate),
+            emission: renderer.createTexture(textures.emission, onUpdate),
+            clouds: renderer.createTexture(textures.clouds, onUpdate)
         };
 
         this.sphere = renderer.createObject(
@@ -150,12 +138,55 @@ class Planet {
 
 let renderer = new Renderer("textures");
 let framebuffer = renderer.createFrameBuffer(480, 480);
-let planet = new Planet("earth", renderer, () => { requestAnimationFrame(draw); });
+
+let planetConfigurations = {
+    earth: {
+        albedo: "planets/earth_daymap.jpg",
+        emission: "planets/earth_nightmap.jpg",
+        clouds: "planets/earth_clouds.jpg"
+    },
+    jupiter: { 
+        albedo: "planets/jupiter.jpg"
+    },
+    mars: { 
+        albedo: "planets/mars.jpg"
+    },
+    mercury: { 
+        albedo: "planets/mars.jpg"
+    },
+    moon: { 
+        albedo: "planets/moon.jpg"
+    },
+    neptune:  { 
+        albedo: "planets/neptune.jpg"
+    },
+    saturn:  { 
+        albedo: "planets/saturn.jpg"
+    },
+    uranus:  { 
+        albedo: "planets/uranus.jpg"
+    },
+    venus: {
+        albedo: "planets/venus_surface.jpg",
+        clouds: "planets/venus_atmosphere.jpg"
+    }
+};
+
+let planetTextures = new Parameters("planet", () => {
+    planet = new Planet(
+        planetConfigurations[planetTextures.planet],
+        renderer, () => { requestAnimationFrame(draw); });
+});
+planetTextures.enum("planet", "earth", Object.keys(planetConfigurations));
+
+let planet = new Planet(planetConfigurations[planetTextures.planet],
+        renderer, () => { requestAnimationFrame(draw); });
 
 if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
     document.body.appendChild(renderer.element);
     document.body.appendChild(params.element);
     document.body.appendChild(planet.params.element);
+    document.body.appendChild(planetTextures.element);
     params.devModeCamera = true;
     params.rotateDevCamera = true;
 } else {

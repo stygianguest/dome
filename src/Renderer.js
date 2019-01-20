@@ -77,7 +77,7 @@ export default class {
         const border = 0;
         const srcFormat = this.gl.RGBA;
         const srcType = this.gl.UNSIGNED_BYTE;
-        const pixel = new Uint8Array([0, 0, 255, 255]);  // opaque blue
+        const pixel = new Uint8Array([0, 0, 0, 0]);
         this.gl.texImage2D(this.gl.TEXTURE_2D, level, internalFormat,
                       width, height, border, srcFormat, srcType,
                       pixel);
