@@ -102,6 +102,37 @@ export default class {
         return texture;
     }
 
+    createFrameBuffer(width, height) {
+        let texture = this.gl.createTexture();
+        this.gl.bindTexture(this.gl.TEXTURE_2D, texture);
+
+        // define size and format of level 0
+        const level = 0;
+        const internalFormat = this.gl.RGBA;
+        const border = 0;
+        const format = this.gl.RGBA;
+        const type = this.gl.UNSIGNED_BYTE;
+        const data = null;
+        this.gl.texImage2D(this.gl.TEXTURE_2D, level, internalFormat,
+                    width, height, border,
+                    format, type, data);
+
+        // set the filtering so we don't need mips
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
+        this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
+
+        // Create and bind the framebuffer
+        let framebuffer = this.gl.createFramebuffer();
+        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, framebuffer);
+
+        // attach the texture as the first color attachment
+        const attachmentPoint = this.gl.COLOR_ATTACHMENT0;
+        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, attachmentPoint, this.gl.TEXTURE_2D, texture, level);
+
+        return { framebuffer, texture, width, height };
+    }
+
     createProgram(vertexShader, fragmentShader) {
         const program = initShaderProgram(this.gl, vertexShader, fragmentShader);
 
@@ -210,7 +241,7 @@ export default class {
             renderer.draw(mesh.indices.length, attributes, indices, program, uniforms);
         };
 
-        return { uniforms: uniforms, draw: draw };
+        return { uniforms, draw };
     }
 
     resize(width = null, height = null) {
@@ -220,9 +251,9 @@ export default class {
         if (this.canvas.width != newWidth || this.canvas.height != newHeight) {
             this.canvas.width = newWidth;
             this.canvas.height = newHeight;
-            this.gl.viewport(0, 0, newWidth, newHeight);
         }
 
+        this.gl.viewport(0, 0, newWidth, newHeight);
     }
 
     toggleFullscreen() {

@@ -21,27 +21,32 @@ params.bool("devModeCamera", false);
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
 params.bool("rotateDevCamera", false);
 
-params.section("sphere")
-params.sphere.float("phi", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
-params.sphere.float("lambda", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
-
 params.section("camera");
 params.camera.float("distance", 3.0, 0.1, 0.0);
 params.camera.float("phi", -0.7, 0.1, -2 * Math.PI, 2 * Math.PI);
 params.camera.float("lambda", 0.07, 0.1, -2 * Math.PI, 2 * Math.PI);
 
-let planet = new Parameters("planet", () => {
-    uniforms.albedo = renderer.createTexture(planet.albedo, () => { requestAnimationFrame(draw) })
-    uniforms.emission = renderer.createTexture(planet.emission, () => { requestAnimationFrame(draw) })
-    uniforms.clouds = renderer.createTexture(planet.clouds, () => { requestAnimationFrame(draw) })
+let planet = new Parameters("planet", (change) => {
+    if (change.id == "albedo") {
+        uniforms.albedo = renderer.createTexture(planet.albedo, () => { requestAnimationFrame(draw) })
+    }
+    if (change.id == "emission") {
+        uniforms.emission = renderer.createTexture(planet.emission, () => { requestAnimationFrame(draw) })
+    }
+    if (change.id == "clouds") {
+        uniforms.clouds = renderer.createTexture(planet.clouds, () => { requestAnimationFrame(draw) })
+    }
     requestAnimationFrame(draw);
 });
+
+planet.float("phi", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
+planet.float("lambda", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
 planet.string("albedo", "earth/earth_daymap.jpg");
 planet.string("emission", "earth/earth_nightmap.jpg");
 planet.string("clouds", "earth/earth_clouds.jpg");
-planet.section("sun");
 
 let renderer = new Renderer("textures");
+let framebuffer = renderer.createFrameBuffer(480, 480);
 
 if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
     document.body.appendChild(renderer.element);
@@ -124,41 +129,70 @@ let sphere = renderer.createObject(
       }
     `);
 
+let hemisphereUniforms = {
+    projectionMatrix: mat4.create(),
+    modelMatrix: mat4.create(),
+    tex: framebuffer.texture
+};
+
+let hemisphere = renderer.createObject(
+    geometry.uvHemisphere(24, 64),
+    hemisphereUniforms,
+    `#version 300 es
+
+      in vec4 vertices;
+      in vec2 uvs;
+
+      uniform mat4 projectionMatrix;
+
+      out highp vec2 uv;
+
+      void main(void) {
+        gl_Position = projectionMatrix * vertices;
+        uv = uvs;
+      }
+    `,
+    `#version 300 es
+
+      in highp vec2 uv;
+      uniform sampler2D tex;
+
+      out lowp vec4 color;
+
+      void main(void) {
+        color = texture(tex, uv);
+      }
+    `);
 
 cameraControls(renderer.canvas);
 requestAnimationFrame(draw);
 
 function draw() {
-    renderer.resize();
-    renderer.clear(0, 0, 0.2, 1);
-
     //TODO: reuse existing matrices rather than recreate them
+    //
     { // rotate the object
         let m = mat4.create();
-        mat4.rotate(m, m, params.sphere.phi, [1, 0, 0]);
-        mat4.rotate(m, m, params.sphere.lambda, [0, 1, 0]);
+        mat4.rotate(m, m, planet.phi, [1, 0, 0]);
+        mat4.rotate(m, m, planet.lambda, [0, 1, 0]);
         uniforms.modelMatrix = m;
     }
 
-    // set the camera matrix
-    if (params.devModeCamera) {
-        // TODO: just a different projection isn't good enough; we need to render to a
-        // canvas, and project that onto a sphere which is then rendered with
-        // this projection
-        const aspect = renderer.canvas.clientWidth / renderer.canvas.clientHeight;
-        const fieldOfView = 45 * Math.PI / 180; // in radians
-        const zNear = 0.1;
-        const zFar = 100.0;
+    {
+        let aspect = 1.;
+        if (params.devModeCamera) {
+            // render to texture
+            renderer.gl.bindFramebuffer(renderer.gl.FRAMEBUFFER, framebuffer.framebuffer);
+            renderer.gl.viewport(0, 0, framebuffer.width, framebuffer.height);
+            aspect = framebuffer.width / framebuffer.height;
+        } else {
+            // render to screen
+            renderer.gl.bindFramebuffer(renderer.gl.FRAMEBUFFER, null);
+            renderer.resize();
+            aspect = renderer.canvas.clientWidth / renderer.canvas.clientHeight;
+        }
 
-        let m = mat4.create();
-        mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
-        mat4.translate(m, m, [0., 0., -params.camera.distance]);
-        mat4.rotate(m, m, params.camera.phi, [1, 0, 0]);
-        mat4.rotate(m, m, params.camera.lambda, [0, 1, 0]);
-        uniforms.projectionMatrix = m;
-    } else {
-        //TODO: reuse existing matrices rather than recreate them
-        const aspect = renderer.canvas.clientWidth / renderer.canvas.clientHeight;
+        renderer.clear(0, 0, 0, 1);
+
         const phi = -Math.PI;
         const lambda = 0;
         const distance = 2.3;
@@ -172,8 +206,29 @@ function draw() {
         mat4.rotate(m, m, phi, [1, 0, 0]);
         mat4.rotate(m, m, lambda, [0, 1, 0]);
         uniforms.projectionMatrix = m;
+
+        sphere.draw();
     }
-    sphere.draw();
+
+    if (params.devModeCamera) {
+
+        renderer.gl.bindFramebuffer(renderer.gl.FRAMEBUFFER, null);
+        renderer.resize();
+        renderer.clear(0, 0, 0.2, 1);
+
+        const aspect = renderer.canvas.clientWidth / renderer.canvas.clientHeight;
+        const fieldOfView = 45 * Math.PI / 180; // in radians
+        const zNear = 0.1;
+        const zFar = 100.0;
+
+        let m = mat4.create();
+        mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
+        mat4.translate(m, m, [0., 0., -params.camera.distance]);
+        mat4.rotate(m, m, params.camera.phi, [1, 0, 0]);
+        mat4.rotate(m, m, params.camera.lambda, [0, 1, 0]);
+        hemisphereUniforms.projectionMatrix = m;
+        hemisphere.draw();
+    }
 }
 
 // drag controls our view of the dome
@@ -198,10 +253,10 @@ function cameraControls(canvas) {
                 params.camera.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
                 params.camera.phi %= Math.PI * 2;
             } else {
-                params.sphere.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
-                params.sphere.lambda %= Math.PI * 2;
-                params.sphere.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
-                params.sphere.phi %= Math.PI * 2;
+                planet.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
+                planet.lambda %= Math.PI * 2;
+                planet.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
+                planet.phi %= Math.PI * 2;
             }
         }
         lastPosition = {
