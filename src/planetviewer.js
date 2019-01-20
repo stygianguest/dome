@@ -19,6 +19,7 @@ let params = new Parameters("params", (update) => {
 
 params.bool("devModeCamera", false);
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
+params.bool("rotateDevCamera", false);
 
 params.section("sphere")
 params.sphere.float("phi", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
@@ -30,13 +31,15 @@ params.camera.float("phi", -0.7, 0.1, -2 * Math.PI, 2 * Math.PI);
 params.camera.float("lambda", 0.07, 0.1, -2 * Math.PI, 2 * Math.PI);
 
 let planet = new Parameters("planet", () => {
-    uniforms.tex = renderer.createTexture(planet.texture, () => {
-        requestAnimationFrame(draw)
-    })
+    uniforms.albedo = renderer.createTexture(planet.albedo, () => { requestAnimationFrame(draw) })
+    uniforms.emission = renderer.createTexture(planet.emission, () => { requestAnimationFrame(draw) })
+    uniforms.clouds = renderer.createTexture(planet.clouds, () => { requestAnimationFrame(draw) })
     requestAnimationFrame(draw);
 });
-planet.string("texture", "earth/earth_daymap.jpg");
-
+planet.string("albedo", "earth/earth_daymap.jpg");
+planet.string("emission", "earth/earth_nightmap.jpg");
+planet.string("clouds", "earth/earth_clouds.jpg");
+planet.section("sun");
 
 let renderer = new Renderer("textures");
 
@@ -45,6 +48,7 @@ if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
     document.body.appendChild(params.element);
     document.body.appendChild(planet.element);
     params.devModeCamera = true;
+    params.rotateDevCamera = true;
 } else {
     renderer.canvas.style.display = 'block';
     renderer.canvas.style.width = '100vw';
@@ -56,7 +60,13 @@ if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
 let uniforms = {
     projectionMatrix: mat4.create(),
     modelMatrix: mat4.create(),
-    tex: renderer.createTexture(planet.texture, () => {
+    albedo: renderer.createTexture(planet.albedo, () => {
+        requestAnimationFrame(draw)
+    }),
+    emission: renderer.createTexture(planet.emission, () => {
+        requestAnimationFrame(draw)
+    }),
+    clouds: renderer.createTexture(planet.clouds, () => {
         requestAnimationFrame(draw)
     })
 };
@@ -68,6 +78,7 @@ let sphere = renderer.createObject(
 
       in vec4 vertices;
       out highp vec4 vertex;
+      out highp vec3 normal;
 
       uniform mat4 modelMatrix;
       uniform mat4 projectionMatrix;
@@ -75,13 +86,21 @@ let sphere = renderer.createObject(
       void main(void) {
         gl_Position = projectionMatrix * modelMatrix * vertices;
         vertex = vertices;
+
+        // use the rotated vertex as normal, this works because
+        // - the model is a unit-sphere (radius of 1.0)
+        // - modelMatrix will only rotate
+        normal = (modelMatrix * vertex).xyz;
       }
     `,
     `#version 300 es
 
-      uniform sampler2D tex;
+      uniform sampler2D albedo;
+      uniform sampler2D emission;
+      uniform sampler2D clouds;
 
       in highp vec4 vertex;
+      in highp vec3 normal;
       out lowp vec4 color;
 
       void main(void) {
@@ -89,7 +108,19 @@ let sphere = renderer.createObject(
         highp float lambda = atan(vertex.y, vertex.x);
         highp vec2 uv = vec2(.5 * lambda / ${Math.PI} + 0.5, theta / ${Math.PI} + 0.5);
 
-        color = texture(tex, uv);
+        highp vec3 lightIntensity = vec3(${Math.PI});
+
+        // because the sun is very far away, we can assume a constant direction for it
+        highp vec3 light = vec3(1., 0., 0.);
+
+        highp float cosine = dot(normal, light);
+
+        color = vec4(lightIntensity * texture(albedo,uv).xyz * max(0., cosine) / ${Math.PI}, 1.);
+        color += (-cosine + 1.) / 2. * vec4(texture(emission,uv).xyz, 0.);
+
+        highp float cloudAlpha = dot(texture(clouds,uv).xyz, vec3(1. / 3.));
+        color *= vec4(vec3(1.0 - cloudAlpha), 1.);
+        color += vec4(lightIntensity * texture(clouds,uv).xyz * max(0., cosine) / ${Math.PI}, 0.);
       }
     `);
 
@@ -161,10 +192,17 @@ function cameraControls(canvas) {
     }, false);
     canvas.addEventListener("mousemove", function (e) {
         if (mouseIsDown) {
-            params.sphere.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
-            params.sphere.lambda %= Math.PI * 2;
-            params.sphere.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
-            params.sphere.phi %= Math.PI * 2;
+            if(params.rotateDevCamera) {
+                params.camera.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
+                params.camera.lambda %= Math.PI * 2;
+                params.camera.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
+                params.camera.phi %= Math.PI * 2;
+            } else {
+                params.sphere.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
+                params.sphere.lambda %= Math.PI * 2;
+                params.sphere.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
+                params.sphere.phi %= Math.PI * 2;
+            }
         }
         lastPosition = {
             x: e.clientX,
