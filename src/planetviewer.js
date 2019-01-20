@@ -26,59 +26,7 @@ params.camera.float("distance", 3.0, 0.1, 0.0);
 params.camera.float("phi", -0.7, 0.1, -2 * Math.PI, 2 * Math.PI);
 params.camera.float("lambda", 0.07, 0.1, -2 * Math.PI, 2 * Math.PI);
 
-let planet = new Parameters("planet", (change) => {
-    if (change.id == "albedo") {
-        uniforms.albedo = renderer.createTexture(planet.albedo, () => { requestAnimationFrame(draw) })
-    }
-    if (change.id == "emission") {
-        uniforms.emission = renderer.createTexture(planet.emission, () => { requestAnimationFrame(draw) })
-    }
-    if (change.id == "clouds") {
-        uniforms.clouds = renderer.createTexture(planet.clouds, () => { requestAnimationFrame(draw) })
-    }
-    requestAnimationFrame(draw);
-});
-
-planet.float("phi", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
-planet.float("lambda", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
-planet.string("albedo", "earth/earth_daymap.jpg");
-planet.string("emission", "earth/earth_nightmap.jpg");
-planet.string("clouds", "earth/earth_clouds.jpg");
-
-let renderer = new Renderer("textures");
-let framebuffer = renderer.createFrameBuffer(480, 480);
-
-if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
-    document.body.appendChild(renderer.element);
-    document.body.appendChild(params.element);
-    document.body.appendChild(planet.element);
-    params.devModeCamera = true;
-    params.rotateDevCamera = true;
-} else {
-    renderer.canvas.style.display = 'block';
-    renderer.canvas.style.width = '100vw';
-    renderer.canvas.style.height = '100vh';
-    document.body.style.margin = '0px';
-    document.body.appendChild(renderer.canvas);
-}
-
-let uniforms = {
-    projectionMatrix: mat4.create(),
-    modelMatrix: mat4.create(),
-    albedo: renderer.createTexture(planet.albedo, () => {
-        requestAnimationFrame(draw)
-    }),
-    emission: renderer.createTexture(planet.emission, () => {
-        requestAnimationFrame(draw)
-    }),
-    clouds: renderer.createTexture(planet.clouds, () => {
-        requestAnimationFrame(draw)
-    })
-};
-
-let sphere = renderer.createObject(
-    geometry.uvSphere(24, 64),
-    uniforms,
+const planetVertexShader =
     `#version 300 es
 
       in vec4 vertices;
@@ -97,7 +45,9 @@ let sphere = renderer.createObject(
         // - modelMatrix will only rotate
         normal = (modelMatrix * vertex).xyz;
       }
-    `,
+    `;
+
+const planetFragmentShader =
     `#version 300 es
 
       uniform sampler2D albedo;
@@ -127,7 +77,94 @@ let sphere = renderer.createObject(
         color *= vec4(vec3(1.0 - cloudAlpha), 1.);
         color += vec4(lightIntensity * texture(clouds,uv).xyz * max(0., cosine) / ${Math.PI}, 0.);
       }
-    `);
+    `;
+
+class Planet {
+    constructor(name, renderer, onUpdate = () => {}) {
+        this.renderer = renderer;
+
+        this.params = new Parameters(name, (change) => {
+            if (change.id == "albedo") {
+                this.uniforms.albedo = renderer.createTexture(this.params.albedo, onUpdate);
+            }
+            if (change.id == "emission") {
+                this.uniforms.emission = renderer.createTexture(this.params.emission, onUpdate);
+            }
+            if (change.id == "clouds") {
+                this.uniforms.clouds = renderer.createTexture(this.params.clouds, onUpdate);
+            }
+            onUpdate();
+        });
+
+        this.params.float("phi", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
+        this.params.float("lambda", 0.2, 0.1, -2 * Math.PI, 2 * Math.PI);
+        this.params.string("albedo", "earth/earth_daymap.jpg");
+        this.params.string("emission", "earth/earth_nightmap.jpg");
+        this.params.string("clouds", "earth/earth_clouds.jpg");
+
+        //TODO: can we join params and uniforms? would need 'texture' parameter
+        this.uniforms = {
+            projectionMatrix: mat4.create(),
+            modelMatrix: mat4.create(),
+            albedo: renderer.createTexture(this.params.albedo, onUpdate),
+            emission: renderer.createTexture(this.params.emission, onUpdate),
+            clouds: renderer.createTexture(this.params.clouds, onUpdate)
+        };
+
+        this.sphere = renderer.createObject(
+            geometry.uvSphere(24, 64),
+            this.uniforms,
+            planetVertexShader,
+            planetFragmentShader);
+    }
+
+    draw(framebuffer) {
+        //TODO: reuse existing matrices rather than recreate them
+        { // rotate the object
+            let m = mat4.create();
+            mat4.rotate(m, m, this.params.phi, [1, 0, 0]);
+            mat4.rotate(m, m, this.params.lambda, [0, 1, 0]);
+            this.uniforms.modelMatrix = m;
+        }
+
+        {
+            const aspect = framebuffer.width / framebuffer.height;
+            const phi = -Math.PI;
+            const lambda = 0;
+            const distance = 2.3;
+            const fieldOfView = Math.atan2(1.0, distance) * 2.0;
+            const zNear = distance;
+            const zFar = 100.0;
+
+            let m = mat4.create();
+            mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
+            mat4.translate(m, m, [0., 0., -distance]);
+            mat4.rotate(m, m, phi, [1, 0, 0]);
+            mat4.rotate(m, m, lambda, [0, 1, 0]);
+            this.uniforms.projectionMatrix = m;
+
+            this.sphere.draw();
+        }
+    }
+}
+
+let renderer = new Renderer("textures");
+let framebuffer = renderer.createFrameBuffer(480, 480);
+let planet = new Planet("earth", renderer, () => { requestAnimationFrame(draw); });
+
+if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
+    document.body.appendChild(renderer.element);
+    document.body.appendChild(params.element);
+    document.body.appendChild(planet.params.element);
+    params.devModeCamera = true;
+    params.rotateDevCamera = true;
+} else {
+    renderer.canvas.style.display = 'block';
+    renderer.canvas.style.width = '100vw';
+    renderer.canvas.style.height = '100vh';
+    document.body.style.margin = '0px';
+    document.body.appendChild(renderer.canvas);
+}
 
 let hemisphereUniforms = {
     projectionMatrix: mat4.create(),
@@ -169,45 +206,27 @@ requestAnimationFrame(draw);
 
 function draw() {
     //TODO: reuse existing matrices rather than recreate them
-    //
-    { // rotate the object
-        let m = mat4.create();
-        mat4.rotate(m, m, planet.phi, [1, 0, 0]);
-        mat4.rotate(m, m, planet.lambda, [0, 1, 0]);
-        uniforms.modelMatrix = m;
-    }
 
     {
-        let aspect = 1.;
+        let fb = {};
         if (params.devModeCamera) {
             // render to texture
             renderer.gl.bindFramebuffer(renderer.gl.FRAMEBUFFER, framebuffer.framebuffer);
             renderer.gl.viewport(0, 0, framebuffer.width, framebuffer.height);
-            aspect = framebuffer.width / framebuffer.height;
+            fb = framebuffer;
         } else {
             // render to screen
             renderer.gl.bindFramebuffer(renderer.gl.FRAMEBUFFER, null);
             renderer.resize();
-            aspect = renderer.canvas.clientWidth / renderer.canvas.clientHeight;
+            fb =
+                { width: renderer.canvas.clientWidth
+                , height:renderer.canvas.clientHeight
+                };
         }
 
         renderer.clear(0, 0, 0, 1);
 
-        const phi = -Math.PI;
-        const lambda = 0;
-        const distance = 2.3;
-        const fieldOfView = Math.atan2(1.0, distance) * 2.0;
-        const zNear = distance;
-        const zFar = 100.0;
-
-        let m = mat4.create();
-        mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
-        mat4.translate(m, m, [0., 0., -distance]);
-        mat4.rotate(m, m, phi, [1, 0, 0]);
-        mat4.rotate(m, m, lambda, [0, 1, 0]);
-        uniforms.projectionMatrix = m;
-
-        sphere.draw();
+        planet.draw(fb);
     }
 
     if (params.devModeCamera) {
@@ -253,10 +272,10 @@ function cameraControls(canvas) {
                 params.camera.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
                 params.camera.phi %= Math.PI * 2;
             } else {
-                planet.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
-                planet.lambda %= Math.PI * 2;
-                planet.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
-                planet.phi %= Math.PI * 2;
+                planet.params.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
+                planet.params.lambda %= Math.PI * 2;
+                planet.params.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
+                planet.params.phi %= Math.PI * 2;
             }
         }
         lastPosition = {
