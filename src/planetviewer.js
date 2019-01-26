@@ -152,7 +152,7 @@ let planetConfigurations = {
         albedo: "planets/mars.jpg"
     },
     mercury: { 
-        albedo: "planets/mars.jpg"
+        albedo: "planets/mercury.jpg"
     },
     moon: { 
         albedo: "planets/moon.jpg"
