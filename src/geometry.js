@@ -93,6 +93,7 @@ function uvHemisphere(numLatitudes, numLongitudes) {
         indices: new Uint16Array(indices)
     };
 }
+
 function uvSphere(numLatitudes, numLongitudes) {
     //TODO: optimize, allocate proper float array of right size immediately
     //TODO: parametrize axis of the sphere?

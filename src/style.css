@@ -13,7 +13,9 @@ a.icon {
     //border: 1pt solid black;
     //border-radius: 4pt;
     margin: 4pt;
-    display: inline-block;
+    //display: inline-block;
+    display: inline-flex;
+    flex-direction: column;
 }
 
 .windowTitle {
@@ -23,6 +25,7 @@ a.icon {
 
 .windowContents {
     padding: 4pt;
+    flex: 1 1 auto;
 }
 
 .parameters dl {

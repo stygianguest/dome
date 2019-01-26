@@ -51,9 +51,15 @@ export class Parameters {
 
         this.element = document.createElement("div");
         this.element.classList.add('parameterStruct');
+        this.element.id = id;
+
+        this.dl = document.createElement('dl');
 
         if (this.superSection == null) {
+            // this is the toplevel section, so create an actual window, not
+            // just a subsection
             this.element.classList.add('window');
+            this.dl.classList.add('windowContents');
 
             let titleElement = document.createElement("div");
             titleElement.classList.add('windowTitle');
@@ -74,9 +80,6 @@ export class Parameters {
             this.channel.onmessage = (msg) => { this.onBroadcastMessage(msg); };
         }
 
-        this.element.id = id;
-
-        this.dl = document.createElement('dl');
         this.element.appendChild(this.dl);
     }
 

@@ -182,7 +182,9 @@ planetTextures.enum("planet", "earth", Object.keys(planetConfigurations));
 let planet = new Planet(planetConfigurations[planetTextures.planet],
         renderer, () => { requestAnimationFrame(draw); });
 
-if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
+if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
+    renderer.element.style.width = '800px'
+    renderer.element.style.height = '800px';
     document.body.appendChild(renderer.element);
     document.body.appendChild(params.element);
     document.body.appendChild(planet.params.element);
