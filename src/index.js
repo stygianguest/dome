@@ -1,6 +1,5 @@
 'use strict';
 
-import cubetexture from './images/fisheye_grid.gif';
 import {
     mat4,
     mat3,
@@ -11,10 +10,12 @@ import {
 } from './Parameters.js';
 import Renderer from './Renderer.js';
 import geometry from './geometry.js';
+import DotGui from './DotGui.js';
+import PlanetViewer from './planetviewer.js';
 
 const searchParams = new URLSearchParams(window.location.search);
 
-let params = new Parameters("params", (x, v) => {
+let params = new Parameters("params", (update) => {
     requestAnimationFrame(draw);
 });
 
@@ -22,21 +23,73 @@ params.bool("devModeCamera", false);
 params.float("rotationSensitivity", 40, 1, 0, 1000, "number of pixels one must move to rotate by one radian");
 params.bool("rotateDevCamera", false);
 
-params.section("gui")
-params.gui.float("phi", 0.0, 0.1, -2 * Math.PI, 2 * Math.PI);
-params.gui.float("lambda", 0.0, 0.1, -2 * Math.PI, 2 * Math.PI);
-
 params.section("camera");
 params.camera.float("distance", 3.0, 0.1, 0.0);
 params.camera.float("phi", -0.7, 0.1, -2 * Math.PI, 2 * Math.PI);
 params.camera.float("lambda", 0.07, 0.1, -2 * Math.PI, 2 * Math.PI);
 
-let renderer = new Renderer("gui");
+let renderer = new Renderer("textures");
+let framebuffer = renderer.createFrameBuffer(480, 480);
 
-if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
+let planetConfigurations = {
+    earth: {
+        albedo: "planets/earth_daymap.jpg",
+        emission: "planets/earth_nightmap.jpg",
+        clouds: "planets/earth_clouds.jpg"
+    },
+    jupiter: { 
+        albedo: "planets/jupiter.jpg"
+    },
+    mars: { 
+        albedo: "planets/mars.jpg"
+    },
+    mercury: { 
+        albedo: "planets/mercury.jpg"
+    },
+    moon: { 
+        albedo: "planets/moon.jpg"
+    },
+    neptune:  { 
+        albedo: "planets/neptune.jpg"
+    },
+    saturn:  { 
+        albedo: "planets/saturn.jpg"
+    },
+    uranus:  { 
+        albedo: "planets/uranus.jpg"
+    },
+    venus: {
+        albedo: "planets/venus_surface.jpg",
+        clouds: "planets/venus_atmosphere.jpg"
+    }
+};
+
+let planetTextures = new Parameters("planet", () => {
+    let oldplanet = planet;
+
+    planet = new PlanetViewer(
+        planetConfigurations[planetTextures.planet],
+        renderer, () => { requestAnimationFrame(draw); });
+
+    if (oldplanet.params.element.parentNode) {
+        document.body.replaceChild(planet.params.element, oldplanet.params.element);
+    }
+});
+planetTextures.enum("planet", "earth", Object.keys(planetConfigurations));
+
+let planet = new DotGui(planetConfigurations[planetTextures.planet],
+        renderer, () => { requestAnimationFrame(draw); });
+
+if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
+    searchParams.set('devMode','true');
+    renderer.element.style.width = '800px'
+    renderer.element.style.height = '800px';
     document.body.appendChild(renderer.element);
     document.body.appendChild(params.element);
+    document.body.appendChild(planet.params.element);
+    document.body.appendChild(planetTextures.element);
     params.devModeCamera = true;
+    params.rotateDevCamera = true;
 } else {
     renderer.canvas.style.display = 'block';
     renderer.canvas.style.width = '100vw';
@@ -45,41 +98,15 @@ if (searchParams.has("devMode") && searchParams.get("devMode") == "true") {
     document.body.appendChild(renderer.canvas);
 }
 
-
-let uniforms = {
+let hemisphereUniforms = {
     projectionMatrix: mat4.create(),
     modelMatrix: mat4.create(),
-    tex: renderer.createTexture(cubetexture, () => {
-        requestAnimationFrame(draw)
-    })
+    tex: framebuffer.texture
 };
-
-let dot = renderer.createObject(
-    geometry.disk(24),
-    uniforms,
-    `#version 300 es
-
-      in vec4 vertices;
-
-      uniform mat4 modelMatrix;
-      uniform mat4 projectionMatrix;
-
-      void main(void) {
-        gl_Position = projectionMatrix * modelMatrix * vertices;
-      }
-    `,
-    `#version 300 es
-
-      out lowp vec4 color;
-
-      void main(void) {
-        color = vec4(1.);
-      }
-    `);
 
 let hemisphere = renderer.createObject(
     geometry.uvHemisphere(24, 64),
-    uniforms,
+    hemisphereUniforms,
     `#version 300 es
 
       in vec4 vertices;
@@ -109,21 +136,37 @@ let hemisphere = renderer.createObject(
 cameraControls(renderer.canvas);
 requestAnimationFrame(draw);
 
-function update() {
-    { // rotate the object
-        let m = mat4.create();
-        mat4.rotate(m, m, params.gui.phi, [1, 0, 0]);
-        mat4.rotate(m, m, params.gui.lambda, [0, 1, 0]);
-        mat4.translate(m, m, [0., 0., 1]);
-        mat4.scale(m, m, [0.3, 0.3, 0.3]);
-        uniforms.modelMatrix = m;
+function draw() {
+    //TODO: reuse existing matrices rather than recreate them
+
+    {
+        let fb = {};
+        if (params.devModeCamera) {
+            // render to texture
+            renderer.gl.bindFramebuffer(renderer.gl.FRAMEBUFFER, framebuffer.framebuffer);
+            renderer.gl.viewport(0, 0, framebuffer.width, framebuffer.height);
+            fb = framebuffer;
+        } else {
+            // render to screen
+            renderer.gl.bindFramebuffer(renderer.gl.FRAMEBUFFER, null);
+            renderer.resize();
+            fb =
+                { width: renderer.canvas.clientWidth
+                , height:renderer.canvas.clientHeight
+                };
+        }
+
+        renderer.clear(0, 0, 0, 1);
+
+        planet.draw(fb);
     }
 
-    // set the camer
     if (params.devModeCamera) {
-        // TODO: just a different projection isn't good enough; we need to render to a
-        // canvas, and project that onto a sphere which is then rendered with
-        // this projection
+
+        renderer.gl.bindFramebuffer(renderer.gl.FRAMEBUFFER, null);
+        renderer.resize();
+        renderer.clear(0, 0, 0.2, 1);
+
         const aspect = renderer.canvas.clientWidth / renderer.canvas.clientHeight;
         const fieldOfView = 45 * Math.PI / 180; // in radians
         const zNear = 0.1;
@@ -134,36 +177,7 @@ function update() {
         mat4.translate(m, m, [0., 0., -params.camera.distance]);
         mat4.rotate(m, m, params.camera.phi, [1, 0, 0]);
         mat4.rotate(m, m, params.camera.lambda, [0, 1, 0]);
-        uniforms.projectionMatrix = m;
-    } else {
-        //TODO: reuse existing matrices rather than recreate them
-        const aspect = renderer.canvas.clientWidth / renderer.canvas.clientHeight;
-        const phi = -Math.PI;
-        const lambda = 0;
-        const distance = 2.3;
-        const fieldOfView = Math.atan2(1.0, distance) * 2.0;
-        const zNear = distance;
-        const zFar = 100.0;
-
-        let m = mat4.create();
-        mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
-        mat4.translate(m, m, [0., 0., -distance]);
-        mat4.rotate(m, m, phi, [1, 0, 0]);
-        mat4.rotate(m, m, lambda, [0, 1, 0]);
-        uniforms.projectionMatrix = m;
-    }
-
-}
-
-function draw() {
-    update(); //TODO: move out of draw call
-
-    renderer.resize();
-    renderer.clear(0, 0, 0.2, 1);
-
-    dot.draw();
-
-    if (params.devModeCamera) {
+        hemisphereUniforms.projectionMatrix = m;
         hemisphere.draw();
     }
 }
@@ -190,10 +204,10 @@ function cameraControls(canvas) {
                 params.camera.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
                 params.camera.phi %= Math.PI * 2;
             } else {
-                params.gui.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
-                params.gui.lambda %= Math.PI * 2;
-                params.gui.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
-                params.gui.phi %= Math.PI * 2;
+                planet.params.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
+                planet.params.lambda %= Math.PI * 2;
+                planet.params.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
+                planet.params.phi %= Math.PI * 2;
             }
         }
         lastPosition = {
