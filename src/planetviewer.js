@@ -85,6 +85,10 @@ class PlanetViewer {
             planetFragmentShader);
     }
 
+    update(dtime) {
+        this.params.phi += 0.001;
+    }
+
     draw(framebuffer) {
         //TODO: reuse existing matrices rather than recreate them
         { // rotate the object

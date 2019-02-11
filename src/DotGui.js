@@ -6,7 +6,7 @@ import Renderer from './Renderer.js';
 import geometry from './geometry.js';
 
 class DotGui {
-    constructor(textures, renderer, onUpdate = () => {}) {
+    constructor(menu, renderer, onUpdate = () => {}) {
         this.params = new Parameters("guiParams", (change) => {
             onUpdate();
         });
@@ -42,6 +42,9 @@ class DotGui {
             `);
     }
 
+    update(dtime) {
+    }
+
     draw(framebuffer) {
         { // rotate the object
             let m = mat4.create();
@@ -51,7 +54,7 @@ class DotGui {
             mat4.scale(m, m, [0.3, 0.3, 0.3]);
             this.uniforms.modelMatrix = m;
         }
-        { // draw the dot
+        { // set the projection matrix
             //TODO: reuse existing matrices rather than recreate them
             //TODO: can we make this reusable?
             const aspect = framebuffer.width / framebuffer.height;
@@ -68,9 +71,9 @@ class DotGui {
             mat4.rotate(m, m, phi, [1, 0, 0]);
             mat4.rotate(m, m, lambda, [0, 1, 0]);
             this.uniforms.projectionMatrix = m;
-
-            this.dot.draw();
         }
+
+        this.dot.draw();
     }
 }
 

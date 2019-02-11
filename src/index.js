@@ -77,8 +77,26 @@ let planetTextures = new Parameters("planet", () => {
 });
 planetTextures.enum("planet", "earth", Object.keys(planetConfigurations));
 
-let planet = new DotGui(planetConfigurations[planetTextures.planet],
-        renderer, () => { requestAnimationFrame(draw); });
+let menu = {
+    planets: {
+        earth: { },
+        jupiter: { },
+        mars: { },
+        mercury: { },
+        moon: { },
+        neptune:  { },
+        saturn:  { },
+        uranus:  { },
+        venus: { }
+    },
+    games: {
+        pong: { },
+        racer: { }
+    }
+};
+
+let planet = new DotGui(menu, renderer,
+    () => { requestAnimationFrame(draw); });
 
 if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
     searchParams.set('devMode','true');
@@ -135,6 +153,14 @@ let hemisphere = renderer.createObject(
 
 cameraControls(renderer.canvas);
 requestAnimationFrame(draw);
+
+
+const update_interval = 17; // 60 hz
+setInterval(update, update_interval);
+
+function update() {
+    planet.update(update_interval);
+}
 
 function draw() {
     //TODO: reuse existing matrices rather than recreate them
