@@ -86,6 +86,7 @@ class PlanetViewer {
     }
 
     update(dtime) {
+        //TODO: adjust to time
         this.params.phi += 0.001;
     }
 

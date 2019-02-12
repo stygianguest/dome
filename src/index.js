@@ -77,25 +77,7 @@ let planetTextures = new Parameters("planet", () => {
 });
 planetTextures.enum("planet", "earth", Object.keys(planetConfigurations));
 
-let menu = {
-    planets: {
-        earth: { },
-        jupiter: { },
-        mars: { },
-        mercury: { },
-        moon: { },
-        neptune:  { },
-        saturn:  { },
-        uranus:  { },
-        venus: { }
-    },
-    games: {
-        pong: { },
-        racer: { }
-    }
-};
-
-let planet = new DotGui(menu, renderer,
+let planet = new DotGui(Object.keys(planetConfigurations), renderer,
     () => { requestAnimationFrame(draw); });
 
 if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
@@ -155,7 +137,7 @@ cameraControls(renderer.canvas);
 requestAnimationFrame(draw);
 
 
-const update_interval = 17; // 60 hz
+const update_interval = 1/60; // 60 Hz
 setInterval(update, update_interval);
 
 function update() {
