@@ -87,10 +87,31 @@ class DotGui {
     }
 
     currentPosition() {
-        let t = easeInOutCubic(this.params.anim.t)
+        let t = easeInOutCubic(this.params.anim.t);
 
-        let phi =     lerp(this.params.origin.phi,     this.params.dest.phi,     t);
-        let lambda =  lerp(this.params.origin.lambda,  this.params.dest.lambda,  t);
+        let o = this.params.origin;
+        let d = this.params.dest;
+
+        let delta = { phi: o.lambda - d.lambda, lamba: o.lambda - d.lambda };
+
+        // the haversine formula to compute the great circle distance
+        let dist = function() {
+            let sin_hphi = Math.sin(delta.phi/2);
+            let sin_hlambda = Math.sin(delta.lambda/2);
+            let a = sin_hphi*sin_hphi + Math.cos(o.phi) * Math.cos(d.phi) * sin_hlambda*sin_hlambda;
+            return 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }();
+
+        let sin_dist = Math.sin(dist);
+        let a = Math.sin((1-t)*dist) / sin_dist;
+        let b = Math.sin(t*dist) / sin_dist;
+        let x = a * Math.cos(o.phi) * Math.cos(o.lambda) + b * Math.cos(d.phi) * Math.cos(d.lambda);
+        let y = a * Math.cos(o.phi) * Math.sin(o.lambda) + b * Math.cos(d.phi) * Math.sin(d.lambda);
+        let z = a * Math.sin(o.phi) + b * Math.sin(d.phi);
+        let phi = Math.atan2(z, Math.sqrt(x*x + y*y));
+        let lambda = Math.atan2(y, x);
+
+        console.log(phi, lambda);
 
         return { phi, lambda };
     }
