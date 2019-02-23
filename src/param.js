@@ -1,5 +1,3 @@
-'use strict';
-
 import { ParametersOfJSON } from './Parameters.js';
 import './style.css';
 

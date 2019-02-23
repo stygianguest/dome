@@ -1,5 +1,3 @@
-'use strict';
-
 import './style.css';
 
 function makeRandomIdentifier(length, possible="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789") {

@@ -1,9 +1,8 @@
-'use strict';
-
 import { mat4, mat3, vec2 } from 'gl-matrix';
 import { Parameters } from './Parameters.js';
 import Renderer from './Renderer.js';
 import geometry from './geometry.js';
+import { AssertionError } from 'assert';
 
 function lerp(a, b, t) {
     return a + t * (b-a);
@@ -87,12 +86,19 @@ class DotGui {
     }
 
     currentPosition() {
+        // this is an expensive function, early out for simple cases
+        if (this.params.anim.t == 0) {
+            return this.params.origin;
+        } else if ( this.params.anim.t == 1) {
+            return this.params.dest;
+        }
+
         let t = easeInOutCubic(this.params.anim.t);
 
         let o = this.params.origin;
         let d = this.params.dest;
 
-        let delta = { phi: o.lambda - d.lambda, lamba: o.lambda - d.lambda };
+        let delta = { phi: o.lambda - d.lambda, lambda: o.lambda - d.lambda };
 
         // the haversine formula to compute the great circle distance
         let dist = function() {
@@ -101,17 +107,21 @@ class DotGui {
             let a = sin_hphi*sin_hphi + Math.cos(o.phi) * Math.cos(d.phi) * sin_hlambda*sin_hlambda;
             return 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }();
-
+        
         let sin_dist = Math.sin(dist);
         let a = Math.sin((1-t)*dist) / sin_dist;
         let b = Math.sin(t*dist) / sin_dist;
+        console.assert(sin_dist);
         let x = a * Math.cos(o.phi) * Math.cos(o.lambda) + b * Math.cos(d.phi) * Math.cos(d.lambda);
         let y = a * Math.cos(o.phi) * Math.sin(o.lambda) + b * Math.cos(d.phi) * Math.sin(d.lambda);
         let z = a * Math.sin(o.phi) + b * Math.sin(d.phi);
         let phi = Math.atan2(z, Math.sqrt(x*x + y*y));
         let lambda = Math.atan2(y, x);
 
-        console.log(phi, lambda);
+        //console.log(phi, lambda);
+        // console.assert(!isNaN(phi));
+        // console.assert(!isNaN(lambda));
+
 
         return { phi, lambda };
     }

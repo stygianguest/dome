@@ -1,5 +1,3 @@
-'use strict';
-
 export default {
     uvHemisphere,
     uvSphere,
