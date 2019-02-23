@@ -11,6 +11,7 @@ import geometry from './geometry.js';
 import DotGui from './DotGui.js';
 import PlanetViewer from './planetviewer.js';
 
+/* globals URLSearchParams: true */
 const searchParams = new URLSearchParams(window.location.search);
 
 let params = new Parameters("params", (update) => {
@@ -80,7 +81,7 @@ let planet = new DotGui(Object.keys(planetConfigurations), renderer,
 
 if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
     searchParams.set('devMode','true');
-    renderer.element.style.width = '800px'
+    renderer.element.style.width = '800px';
     renderer.element.style.height = '800px';
     document.body.appendChild(renderer.element);
     document.body.appendChild(params.element);

@@ -3,9 +3,11 @@ import './style.css';
 
 document.body.classList.add("parameters");
 
+/* globals URLSearchParams: true */
 let channelName = new URLSearchParams(window.location.search).get("channelName");
 //TODO: handle the case the channelName does not exist
 
+/* globals BroadcastChannel: true */
 let channel = new BroadcastChannel(channelName);
 
 var params;

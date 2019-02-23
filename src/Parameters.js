@@ -74,7 +74,10 @@ export class Parameters {
             titleElement.appendChild(detach);
 
             this.channelName = makeRandomIdentifier(8);
+
+            /* globals BroadcastChannel: true */
             this.channel = new BroadcastChannel(this.channelName);
+            
             this.channel.onmessage = (msg) => { this.onBroadcastMessage(msg); };
         }
 
@@ -127,7 +130,7 @@ export class Parameters {
         inputElem.onchange = (e) => {
             let c = {id, 'value': e.target.checked};
             this.onchange(c);
-            this.broadcastUpdate(c)
+            this.broadcastUpdate(c);
         };
             
         let get = () => { return inputElem.checked; };
@@ -224,8 +227,8 @@ export class Parameters {
         select.value = value;
 
         select.onchange = () => {
-            this.onchange({id, value: select.value})
-            this.broadcastUpdate({id, value: select.value})
+            this.onchange({id, value: select.value});
+            this.broadcastUpdate({id, value: select.value});
         };
 
         let get = () => {
@@ -234,7 +237,7 @@ export class Parameters {
 
         let set = (value) => {
             select.value = value;
-            this.onchange({id, value})
+            this.onchange({id, value});
         };
 
         Object.defineProperty(this, id, { 
@@ -258,17 +261,20 @@ export class Parameters {
         labelElem.innerText = label || id;
         element.appendChild(labelElem);
       
-        let buttons = []
+        let buttons = [];
+
+        let onchange = () => {
+            this.onchange({id, value: this[id]});
+            this.broadcastUpdate({id, value: this[id]});
+        };
+
         for (let choice of choices) {
             let button = document.createElement("input");
             button.type = "radio";
             button.name = `${this.element.id}/${id}`;
             button.id = `${button.name}-${buttons.length}`;
             button.checked = buttons.length == value || choice == value;
-            button.onchange = () => {
-                this.onchange({id, value: this[id]})
-                this.broadcastUpdate({id, value: this[id]})
-            };
+            button.onchange = onchange;
 
             let label = document.createElement("label");
             label.innerText = choice;
@@ -299,7 +305,7 @@ export class Parameters {
                 buttons[j].checked = i == j;
                 j++;
             }
-            this.onchange({id, value: i})
+            this.onchange({id, value: i});
         };
 
         Object.defineProperty(this, id, { 

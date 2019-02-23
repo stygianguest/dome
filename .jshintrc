@@ -1,3 +1,12 @@
 {
-    "esversion" : 6
+    "esversion" : 6,
+    "strict": "implied",
+
+    // set up environment
+    "browser": true,
+    "devel": true,
+
+    // unwanted warnings
+    "-W047": true, // I like to write eg. 0. for float of zero
+    "laxcomma": true  // I like to use UU-style indenting, e.g. [ 1\n, 2\n]
 }

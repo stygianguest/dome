@@ -46,13 +46,13 @@ class DotGui {
 
         this.currentSelection = menu[0];
         this.params.enum("selection", this.currentSelection, menu);
-        this.params.section("origin")
+        this.params.section("origin");
         this.params.origin.float("phi", 0.0, 0.1, -2 * Math.PI, 2 * Math.PI);
         this.params.origin.float("lambda", 0.0, 0.1, -2 * Math.PI, 2 * Math.PI);
-        this.params.section("dest")
+        this.params.section("dest");
         this.params.dest.float("phi", -1., 0.1, -2 * Math.PI, 2 * Math.PI);
         this.params.dest.float("lambda", -1., 0.1, -2 * Math.PI, 2 * Math.PI);
-        this.params.section("anim")
+        this.params.section("anim");
         this.params.anim.float("t", 0., 0.0001, 0., 1.);
         this.params.anim.float("duration", 1.0, 0.1);
 
