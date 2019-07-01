@@ -32,51 +32,53 @@ let framebuffer = renderer.createFrameBuffer(480, 480);
 
 let planetConfigurations = {
     earth: {
-        albedo: "planets/earth_daymap.jpg",
-        emission: "planets/earth_nightmap.jpg",
-        clouds: "planets/earth_clouds.jpg"
+        createRenderer: (r, tl) => { return new PlanetViewer({albedo: "planets/earth_daymap.jpg", emission: "planets/earth_nightmap.jpg", clouds: "planets/earth_clouds.jpg"}, r, tl); }
     },
-    jupiter: { 
-        albedo: "planets/jupiter.jpg"
-    },
-    mars: { 
-        albedo: "planets/mars.jpg"
-    },
-    mercury: { 
-        albedo: "planets/mercury.jpg"
-    },
-    moon: { 
-        albedo: "planets/moon.jpg"
-    },
-    neptune:  { 
-        albedo: "planets/neptune.jpg"
-    },
-    saturn:  { 
-        albedo: "planets/saturn.jpg"
-    },
-    uranus:  { 
-        albedo: "planets/uranus.jpg"
-    },
-    venus: {
-        albedo: "planets/venus_surface.jpg",
-        clouds: "planets/venus_atmosphere.jpg"
+    jupiter: {
+        createRenderer: (r, tl) => { return new PlanetViewer({albedo: "planets/jupiter.jpg"}, r, tl); }
     }
+    // jupiter: { 
+    //     albedo: "planets/jupiter.jpg"
+    // },
+    // mars: { 
+    //     albedo: "planets/mars.jpg"
+    // },
+    // mercury: { 
+    //     albedo: "planets/mercury.jpg"
+    // },
+    // moon: { 
+    //     albedo: "planets/moon.jpg"
+    // },
+    // neptune:  { 
+    //     albedo: "planets/neptune.jpg"
+    // },
+    // saturn:  { 
+    //     albedo: "planets/saturn.jpg"
+    // },
+    // uranus:  { 
+    //     albedo: "planets/uranus.jpg"
+    // },
+    // venus: {
+    //     albedo: "planets/venus_surface.jpg",
+    //     clouds: "planets/venus_atmosphere.jpg"
+    // }
 };
 
-let planetTextures = new Parameters("planet", () => {
-    let oldplanet = planet;
+// let planetTextures = new Parameters("planet", () => {
+//     let oldplanet = planet;
 
-    planet = new PlanetViewer(
-        planetConfigurations[planetTextures.planet],
-        renderer, () => { requestAnimationFrame(draw); });
+//     planet = new PlanetViewer(
+//         planetConfigurations[planetTextures.planet],
+//         renderer, () => { requestAnimationFrame(draw); });
 
-    if (oldplanet.params.element.parentNode) {
-        document.body.replaceChild(planet.params.element, oldplanet.params.element);
-    }
-});
-planetTextures.enum("planet", "earth", Object.keys(planetConfigurations));
+//     if (oldplanet.params.element.parentNode) {
+//         document.body.replaceChild(planet.params.element, oldplanet.params.element);
+//     }
+// });
+//planetTextures.enum("planet", "earth", Object.keys(planetConfigurations));
 
-let planet = new DotGui(Object.keys(planetConfigurations), renderer,
+//let planet = new PlanetViewer({albedo: "planets/jupiter.jpg"}, renderer);
+let planet = new DotGui(planetConfigurations, renderer,
     () => { requestAnimationFrame(draw); });
 
 if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
@@ -86,7 +88,7 @@ if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
     document.body.appendChild(renderer.element);
     document.body.appendChild(params.element);
     document.body.appendChild(planet.params.element);
-    document.body.appendChild(planetTextures.element);
+    //document.body.appendChild(planetTextures.element);
     params.devModeCamera = true;
     params.rotateDevCamera = true;
 } else {
@@ -141,6 +143,7 @@ setInterval(update, update_interval);
 
 function update() {
     planet.update(update_interval);
+    requestAnimationFrame(draw);
 }
 
 function draw() {

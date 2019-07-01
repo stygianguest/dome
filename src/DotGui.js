@@ -12,8 +12,11 @@ function easeInOutCubic(t) {
 
 class DotGui {
     constructor(menu, renderer, onUpdate = () => {}) {
-        this.locations = {};
-        for (let item of menu) {
+        this.renderer = renderer;
+        this.locations = {}; //TODO: merge into dots
+        this.dots = {};
+
+        for (let item of Object.keys(menu)) {
             let phi = Math.random() * Math.PI - 0.5*Math.PI;
             let lambda = Math.random() * Math.PI * 2 - Math.PI;
 
@@ -21,8 +24,26 @@ class DotGui {
             quat.rotateX(q, q, lambda);
             quat.rotateY(q, q, phi);
             this.locations[item] = q;
+
+            let framebuffer = renderer.createFrameBuffer(480, 480); //TODO: what resolution?
+            let menuProgram = menu[item].createRenderer(renderer, () => {
+                // // render to texture
+                // renderer.gl.bindFramebuffer(renderer.gl.FRAMEBUFFER, framebuffer.framebuffer);
+                // renderer.gl.viewport(0, 0, framebuffer.width, framebuffer.height);
+                // renderer.clear(0, 0, 0, 1);
+                // menuProgram.draw(framebuffer);
+            });
+
+            // // render to texture
+            // renderer.gl.bindFramebuffer(renderer.gl.FRAMEBUFFER, framebuffer.framebuffer);
+            // renderer.gl.viewport(0, 0, framebuffer.width, framebuffer.height);
+            // renderer.clear(0, 0, 0, 1);
+            // menuProgram.draw(framebuffer);
+
+            this.dots[item] = { framebuffer, menuProgram };
         }
 
+         //TODO: set initial values
         this.origin = quat.create();
         this.pos = quat.create(); //TODO: rename to view
         this.dest = quat.create();
@@ -42,8 +63,8 @@ class DotGui {
             }
         });
 
-        this.currentSelection = menu[0];
-        this.params.enum("selection", this.currentSelection, menu);
+        this.currentSelection = Object.keys(menu)[0];
+        this.params.enum("selection", this.currentSelection, Object.keys(menu));
         this.params.section("anim");
         this.params.anim.float("t", 0., 0.0001, 0., 1.);
         this.params.anim.float("duration", 1.0, 0.1);
@@ -53,28 +74,60 @@ class DotGui {
             modelMatrix: mat4.create()
         };
 
+        // this.dot = renderer.createObject(
+        //     geometry.disk(24),
+        //     this.uniforms,
+        //     `#version 300 es
+
+        //       in vec4 vertices;
+
+        //       uniform mat4 modelMatrix;
+        //       uniform mat4 projectionMatrix;
+
+        //       void main(void) {
+        //         gl_Position = projectionMatrix * modelMatrix * vertices;
+        //       }
+        //     `,
+        //     `#version 300 es
+
+        //       out lowp vec4 color;
+
+        //       void main(void) {
+        //         color = vec4(1.);
+        //       }
+        //     `);
+
         this.dot = renderer.createObject(
-            geometry.disk(24),
+            geometry.uvHemisphere(24, 64), //TODO: we can probably make due with less
             this.uniforms,
             `#version 300 es
-
-              in vec4 vertices;
-
-              uniform mat4 modelMatrix;
-              uniform mat4 projectionMatrix;
-
-              void main(void) {
+        
+                in vec4 vertices;
+                in vec2 uvs;
+        
+                uniform mat4 modelMatrix;
+                uniform mat4 projectionMatrix;
+        
+                out highp vec2 uv;
+        
+                void main(void) {
                 gl_Position = projectionMatrix * modelMatrix * vertices;
-              }
+                uv = uvs;
+                }
             `,
             `#version 300 es
-
-              out lowp vec4 color;
-
-              void main(void) {
-                color = vec4(1.);
-              }
+        
+                in highp vec2 uv;
+                uniform sampler2D tex;
+        
+                out lowp vec4 color;
+        
+                void main(void) {
+                color = texture(tex, uv);
+                }
             `);
+
+        this.once = true;
     }
 
     update(dtime) {
@@ -88,6 +141,21 @@ class DotGui {
             //FIXME: does it make sense to copy every time? can we skip this?
             quat.copy(this.origin, this.dest);
             quat.copy(this.pos, this.dest);
+        }
+
+        for (let item in this.locations) { // render to texture
+            let dot = this.dots[item];
+            dot.menuProgram.update(1.0);
+
+            this.renderer.gl.bindFramebuffer(this.renderer.gl.FRAMEBUFFER, dot.framebuffer.framebuffer);
+            this.renderer.gl.viewport(0, 0, dot.framebuffer.width, dot.framebuffer.height);
+            this.renderer.clear(0, 0, 0, 1);
+            //if (this.once) {
+                dot.menuProgram.draw(dot.framebuffer);
+                this.once = false;
+            /*} else {
+                this.renderer.clear(1, 0, 0, 1);
+            }*/
         }
     }
 
@@ -119,6 +187,8 @@ class DotGui {
         }
 
         for (let item in this.locations) {
+            this.uniforms.tex = this.dots[item].framebuffer.texture;
+
             //TODO: these do not change, we shouldn't upload a matrix every time
             // rotate the object
             let pos = this.locations[item];
