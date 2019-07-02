@@ -8,8 +8,7 @@ import {
 } from './Parameters.js';
 import Renderer from './Renderer.js';
 import geometry from './geometry.js';
-import DotGui from './DotGui.js';
-import PlanetViewer from './planetviewer.js';
+import Pong from './Pong.js';
 
 /* globals URLSearchParams: true */
 const searchParams = new URLSearchParams(window.location.search);
@@ -30,67 +29,21 @@ params.camera.float("lambda", 0.07, 0.1, -2 * Math.PI, 2 * Math.PI);
 let renderer = new Renderer("textures");
 let framebuffer = renderer.createFrameBuffer(480, 480);
 
-let planetConfigurations = {
-    earth: {
-        createRenderer: (r, tl) => { return new PlanetViewer({albedo: "planets/earth_daymap.jpg", emission: "planets/earth_nightmap.jpg", clouds: "planets/earth_clouds.jpg"}, r, tl); }
-    },
-    jupiter: {
-        createRenderer: (r, tl) => { return new PlanetViewer({albedo: "planets/jupiter.jpg"}, r, tl); }
-    }
-    // jupiter: { 
-    //     albedo: "planets/jupiter.jpg"
-    // },
-    // mars: { 
-    //     albedo: "planets/mars.jpg"
-    // },
-    // mercury: { 
-    //     albedo: "planets/mercury.jpg"
-    // },
-    // moon: { 
-    //     albedo: "planets/moon.jpg"
-    // },
-    // neptune:  { 
-    //     albedo: "planets/neptune.jpg"
-    // },
-    // saturn:  { 
-    //     albedo: "planets/saturn.jpg"
-    // },
-    // uranus:  { 
-    //     albedo: "planets/uranus.jpg"
-    // },
-    // venus: {
-    //     albedo: "planets/venus_surface.jpg",
-    //     clouds: "planets/venus_atmosphere.jpg"
-    // }
-};
-
-// let planetTextures = new Parameters("planet", () => {
-//     let oldplanet = planet;
-
-//     planet = new PlanetViewer(
-//         planetConfigurations[planetTextures.planet],
-//         renderer, () => { requestAnimationFrame(draw); });
-
-//     if (oldplanet.params.element.parentNode) {
-//         document.body.replaceChild(planet.params.element, oldplanet.params.element);
-//     }
-// });
-//planetTextures.enum("planet", "earth", Object.keys(planetConfigurations));
-
-//let planet = new PlanetViewer({albedo: "planets/jupiter.jpg"}, renderer);
-let planet = new DotGui(planetConfigurations, renderer,
-    () => { requestAnimationFrame(draw); });
+let program = new Pong(renderer);
 
 if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
+
     searchParams.set('devMode','true');
     renderer.element.style.width = '800px';
     renderer.element.style.height = '800px';
     document.body.appendChild(renderer.element);
     document.body.appendChild(params.element);
-    document.body.appendChild(planet.params.element);
-    //document.body.appendChild(planetTextures.element);
+
+    document.body.appendChild(program.params.element);
+
     params.devModeCamera = true;
     params.rotateDevCamera = true;
+
 } else {
     renderer.canvas.style.display = 'block';
     renderer.canvas.style.width = '100vw';
@@ -137,12 +90,11 @@ let hemisphere = renderer.createObject(
 cameraControls(renderer.canvas);
 requestAnimationFrame(draw);
 
-
 const update_interval = 1/60; // 60 Hz
 setInterval(update, update_interval);
 
 function update() {
-    planet.update(update_interval);
+    program.update(update_interval);
     requestAnimationFrame(draw);
 }
 
@@ -168,7 +120,7 @@ function draw() {
 
         renderer.clear(0, 0, 0, 1);
 
-        planet.draw(fb);
+        program.draw(fb);
     }
 
     if (params.devModeCamera) {
@@ -213,11 +165,6 @@ function cameraControls(canvas) {
                 params.camera.lambda %= Math.PI * 2;
                 params.camera.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
                 params.camera.phi %= Math.PI * 2;
-            } else {
-                planet.params.lambda += (e.clientX - lastPosition.x) / params.rotationSensitivity;
-                planet.params.lambda %= Math.PI * 2;
-                planet.params.phi += (e.clientY - lastPosition.y) / params.rotationSensitivity;
-                planet.params.phi %= Math.PI * 2;
             }
         }
         lastPosition = {
