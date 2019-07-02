@@ -54,7 +54,6 @@ if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
 
 let hemisphereUniforms = {
     projectionMatrix: mat4.create(),
-    modelMatrix: mat4.create(),
     tex: framebuffer.texture
 };
 
@@ -99,8 +98,6 @@ function update() {
 }
 
 function draw() {
-    //TODO: reuse existing matrices rather than recreate them
-
     {
         let fb = {};
         if (params.devModeCamera) {
@@ -134,12 +131,12 @@ function draw() {
         const zNear = 0.1;
         const zFar = 100.0;
 
-        let m = mat4.create();
+        let m = hemisphereUniforms.projectionMatrix;
+        mat4.identity(m);
         mat4.perspective(m, fieldOfView, aspect, zNear, zFar);
         mat4.translate(m, m, [0., 0., -params.camera.distance]);
         mat4.rotate(m, m, params.camera.phi, [1, 0, 0]);
         mat4.rotate(m, m, params.camera.lambda, [0, 1, 0]);
-        hemisphereUniforms.projectionMatrix = m;
         hemisphere.draw();
     }
 }
