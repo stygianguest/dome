@@ -34,8 +34,8 @@ let program = new Pong(renderer);
 if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
 
     searchParams.set('devMode','true');
-    renderer.element.style.width = '800px';
-    renderer.element.style.height = '800px';
+    renderer.element.style.width = '600px';
+    renderer.element.style.height = '600px';
     document.body.appendChild(renderer.element);
     document.body.appendChild(params.element);
 

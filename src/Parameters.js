@@ -323,6 +323,117 @@ export class Parameters {
         return element;
     }
 
+    touch(id, value={x:0, y:0}, min, max, description="") {
+        let inputElem = document.createElement("div");
+        inputElem.classList.add("parameterTouchField");
+        inputElem.description = description; //FIXME
+        inputElem.style.width = `${Math.ceil(max.x - min.x)}px`;
+        inputElem.style.height = `${Math.ceil(max.y - min.y)}px`;
+
+        let crosshair = document.createElement("div");
+        crosshair.classList.add("parameterTouchCrosshair");
+        inputElem.appendChild(crosshair);
+
+        // let crosshairInner = document.createElement("div");
+        // crosshairInner.classList.add("parameterTouchCrosshairInner");
+        // crosshair.appendChild(crosshairInner);
+        // crosshairInner.innerText = '⌖';
+
+        let onchange = () => {
+            //TODO: code duplication?! is this ever gonna be different?
+            this.onchange({id, value: this[id]});
+            this.broadcastUpdate({id, value: this[id]});
+        };
+
+        var active = false;
+        var currentX;
+        var currentY;
+        var initialX;
+        var initialY;
+        var xOffset = value.x;
+        var yOffset = value.y;
+
+        // function setTranslate(xPos, yPos) {
+        //     crosshair.style.transform = "translate3d(" + xPos + "px, " + yPos + "px, 0)";
+        // }
+        function setTranslate(xPos, yPos) {
+            crosshair.style.transform = "translate3d(" + xPos + "px, " + yPos + "px, 0)";
+            //crosshair.style.left = xPos;
+            //crosshair.style.top = yPos;
+            // console.log("current:", currentX, currentY);
+            // console.log("initial:", initialX, initialY);
+            // console.log("offset:", xOffset, yOffset);
+        }
+
+        setTranslate(xOffset, yOffset);
+
+        function dragStart(e) {
+            if (e.type === "touchstart") {
+                // touch event
+                initialX = e.touches[0].clientX - xOffset;
+                initialY = e.touches[0].clientY - yOffset;
+            } else {
+                //mouse event
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+            }
+      
+            if (e.target === crosshair) {
+                active = true;
+            }
+          }
+      
+          function dragEnd(e) {
+            initialX = currentX;
+            initialY = currentY;
+      
+            active = false;
+          }
+      
+          function drag(e) {
+            if (active) {
+            
+              e.preventDefault();
+            
+              if (e.type === "touchmove") {
+                currentX = e.touches[0].clientX - initialX;
+                currentY = e.touches[0].clientY - initialY;
+              } else {
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+              }
+      
+              xOffset = currentX;
+              yOffset = currentY;
+      
+              setTranslate(currentX, currentY);
+              onchange();
+            }
+          }
+
+          inputElem.addEventListener("touchstart", dragStart, false);
+          inputElem.addEventListener("touchend", dragEnd, false);
+          inputElem.addEventListener("touchmove", drag, false);
+    
+          inputElem.addEventListener("mousedown", dragStart, false);
+          inputElem.addEventListener("mouseup", dragEnd, false);
+          inputElem.addEventListener("mousemove", drag, false);
+
+           
+        let get = () => { 
+            return { x: xOffset, y: yOffset };
+        };
+        
+        let set = (value) => {
+            setTranslate(value.x, value.y);
+            xOffset = value.x;
+            yOffset = value.y;
+            this.onchange({id, value: this[id]});
+        };
+
+        return this.addNewParameter("touch", id, inputElem, get, set, [description]);
+    }
+
     toJSON() {
         return {
             "type": "section",
