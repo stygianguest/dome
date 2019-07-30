@@ -9,6 +9,8 @@ import {
 import Renderer from './Renderer.js';
 import geometry from './geometry.js';
 import Pong from './Pong.js';
+import PlanetViewer from './planetviewer.js';
+import Flash from './Flash.js';
 
 /* globals URLSearchParams: true */
 const searchParams = new URLSearchParams(window.location.search);
@@ -29,7 +31,17 @@ params.camera.float("lambda", 0.07, 0.1, -2 * Math.PI, 2 * Math.PI);
 let renderer = new Renderer("textures");
 let framebuffer = renderer.createFrameBuffer(480, 480);
 
-let program = new Pong(renderer);
+//let program = new Pong(renderer);
+
+let program = new Flash(renderer);
+
+//let program = new PlanetViewer(
+//    { albedo: "planets/earth_daymap.jpg"
+//    , emission: "planets/earth_nightmap.jpg"
+//    , clouds: "planets/earth_clouds.jpg"
+//    },
+//    renderer
+//);
 
 if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
 
