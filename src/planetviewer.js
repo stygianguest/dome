@@ -47,7 +47,7 @@ const planetFragmentShader =
         // because the sun is very far away, we can assume a constant direction for it
         highp vec3 light = vec3(1., 0., 0.);
 
-        highp float cosine = dot(normal, light);
+        highp float cosine = 1.;//dot(normal, light);
 
         color = vec4(lightIntensity * texture(albedo,uv).xyz * max(0., cosine) / ${Math.PI}, 1.);
         color += (-cosine + 1.) / 2. * vec4(texture(emission,uv).xyz, 0.);

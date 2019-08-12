@@ -33,7 +33,7 @@ let framebuffer = renderer.createFrameBuffer(480, 480);
 
 //let program = new Pong(renderer);
 
-let program = new Flash(renderer);
+//let program = new Flash(renderer);
 
 //let program = new PlanetViewer(
 //    { albedo: "planets/earth_daymap.jpg"
@@ -42,6 +42,11 @@ let program = new Flash(renderer);
 //    },
 //    renderer
 //);
+
+let program = new PlanetViewer(
+    { albedo: "planets/oceanwaves_crop.png" },
+    renderer
+);
 
 if (!searchParams.has("devMode") || searchParams.get("devMode") == "true") {
 
