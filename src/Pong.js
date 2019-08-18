@@ -21,12 +21,14 @@ class Pong {
         this.puckPosition = { lambda: 0.0, phi: 0.8 };
         this.puckVelocity = { lambda: 0.0, phi: 0.0 };
 
+        this.puck = quat.create();
+
         this.params = new Parameters("Pong", (change) => {
             onUpdate();
         });
         this.params.float("puck_weight", 0., 0.0001, 0., 1.);
         this.params.float("gravity", 0.0001, 0.0001, 0., 1.);
-        this.params.touch("pos", { x: 10, y: 5}, {x:0, y:0}, {x:360, y:90});
+        this.params.touch("pos", { x: 0, y: 0}, {x:0, y:0}, {x:360, y:90});
 
         this.uniforms = {
             projectionMatrix: mat4.create(),
@@ -58,6 +60,12 @@ class Pong {
     }
 
     update(dtime) {       
+        { // update puck position
+            const pos = this.params.pos;
+            
+            quat.fromEuler(this.puck, pos.y, 0, pos.x);
+        }
+
         this.puckVelocity.phi -= this.params.gravity * Math.sin(this.puckPosition.phi);
 
         this.puckPosition.phi += this.puckVelocity.phi * dtime;
@@ -85,32 +93,27 @@ class Pong {
         // draw the puck
 
         { // rotate the puck
-
             let m = this.uniforms.modelMatrix;
             mat4.identity(m);
             mat4.rotate(m, m, this.puckPosition.lambda, [1, 0, 0]);
             mat4.rotate(m, m, this.puckPosition.phi, [0, 1, 0]);
             mat4.translate(m, m, [0., 0., 1]);
             mat4.scale(m, m, [0.1, 0.1, 0.1]);
-        }
 
-        this.dot.draw();
+            this.dot.draw();
+        }
 
         // draw the cursor
 
         { // rotate the puck
-            const pos = this.params.pos;
-            //console.log(toRadian(pos.x));
-
             let m = this.uniforms.modelMatrix;
-            mat4.identity(m);
-            mat4.rotate(m, m, toRadian(pos.x), [0, 0, 1]);
-            mat4.rotate(m, m, toRadian(pos.y), [0, 1, 0]);
+            mat4.fromQuat(m, this.puck);
             mat4.translate(m, m, [0., 0., 1]);
             mat4.scale(m, m, [0.1, 0.1, 0.1]);
+            
+            this.dot.draw();
         }
 
-        this.dot.draw();
     }
 }
 
