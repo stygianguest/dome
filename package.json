@@ -10,7 +10,7 @@
   "author": "Gideon Smeding <gideon.smeding@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "gl-matrix": "git@github.com:stygianguest/gl-matrix.git#github_npm_dependency"
+    "gl-matrix": "git+ssh://git@github.com/stygianguest/gl-matrix.git#clamped_cosine_getAngle"
   },
   "devDependencies": {
     "babel-core": "^6.26.3",

@@ -1,4 +1,4 @@
-import { mat4, quat } from 'gl-matrix';
+import { vec3, mat4, quat } from 'gl-matrix';
 import { Parameters } from './Parameters.js';
 import geometry from './geometry.js';
 
@@ -18,8 +18,13 @@ class Pong {
     constructor(renderer, onUpdate = () => {}) {
         this.renderer = renderer;
 
-        this.puckPosition = { lambda: 0.0, phi: 0.8 };
-        this.puckVelocity = { lambda: 0.0, phi: 0.0 };
+        //this.puckPosition = { lambda: 0.0, phi: 0.8 };
+        //this.puckVelocity = { lambda: 0.0, phi: 0.0 };
+        this.puckPosition = quat.create();
+        this.puckVelocity = quat.create();
+
+        // let's start at some position
+        quat.fromEuler(this.puckPosition, 40, 0, 0);
 
         this.puck = quat.create();
 
@@ -27,7 +32,7 @@ class Pong {
             onUpdate();
         });
         this.params.float("puck_weight", 0., 0.0001, 0., 1.);
-        this.params.float("gravity", 0.0001, 0.0001, 0., 1.);
+        this.params.float("gravity", 0.1, 0.0001, 0., 1.);
         this.params.touch("pos", { x: 0, y: 0}, {x:0, y:0}, {x:360, y:90});
 
         this.uniforms = {
@@ -60,16 +65,31 @@ class Pong {
     }
 
     update(dtime) {       
-        { // update puck position
-            const pos = this.params.pos;
-            
-            quat.fromEuler(this.puck, pos.y, 0, pos.x);
-        }
+        //{ // update puck position
+        //    const pos = this.params.pos;
+        //    
+        //    quat.fromEuler(this.puck, pos.y, 0, pos.x);
+        //}
 
-        this.puckVelocity.phi -= this.params.gravity * Math.sin(this.puckPosition.phi);
+        //TODO: do we need both?
+        //TODO: move to this
+        let gravityDirection = quat.create(); //move to this
+        let invGravityDirection = quat.conjugate(quat.create(), gravityDirection);
 
-        this.puckPosition.phi += this.puckVelocity.phi * dtime;
-        this.puckPosition.phi %= Math.PI * 2; //FIXME: shouldn't Math.PI be sufficient?
+        let f = quat.multiply(quat.create(), invGravityDirection, this.puckPosition);
+
+        let axis = vec3.create();
+        let angle = quat.getAxisAngle(axis, this.puckPosition);
+
+        let angle_f = -this.params.gravity * Math.sin(angle) * dtime;
+
+        quat.setAxisAngle(f, axis, angle_f);
+
+        quat.multiply(this.puckVelocity, this.puckVelocity, f);
+
+        let d = quat.pow(quat.create(), this.puckVelocity, dtime);
+        quat.multiply(this.puckPosition, this.puckPosition, d);
+
     }
 
     draw(framebuffer) {
@@ -94,25 +114,23 @@ class Pong {
 
         { // rotate the puck
             let m = this.uniforms.modelMatrix;
-            mat4.identity(m);
-            mat4.rotate(m, m, this.puckPosition.lambda, [1, 0, 0]);
-            mat4.rotate(m, m, this.puckPosition.phi, [0, 1, 0]);
-            mat4.translate(m, m, [0., 0., 1]);
-            mat4.scale(m, m, [0.1, 0.1, 0.1]);
-
-            this.dot.draw();
-        }
-
-        // draw the cursor
-
-        { // rotate the puck
-            let m = this.uniforms.modelMatrix;
-            mat4.fromQuat(m, this.puck);
+            mat4.fromQuat(m, this.puckPosition);
             mat4.translate(m, m, [0., 0., 1]);
             mat4.scale(m, m, [0.1, 0.1, 0.1]);
             
             this.dot.draw();
         }
+
+        // draw the cursor
+
+        //{ // rotate the puck
+        //    let m = this.uniforms.modelMatrix;
+        //    mat4.fromQuat(m, this.puck);
+        //    mat4.translate(m, m, [0., 0., 1]);
+        //    mat4.scale(m, m, [0.1, 0.1, 0.1]);
+        //    
+        //    this.dot.draw();
+        //}
 
     }
 }
