@@ -18,15 +18,13 @@ class Pong {
     constructor(renderer, onUpdate = () => {}) {
         this.renderer = renderer;
 
-        //this.puckPosition = { lambda: 0.0, phi: 0.8 };
-        //this.puckVelocity = { lambda: 0.0, phi: 0.0 };
         this.puckPosition = quat.create();
         this.puckVelocity = quat.create();
 
         // let's start at some position
-        quat.fromEuler(this.puckPosition, 40, 0, 0);
+        quat.fromEuler(this.puckPosition, 90, 0, 0);
 
-        this.puck = quat.create();
+        this.mallet = quat.create();
 
         this.params = new Parameters("Pong", (change) => {
             onUpdate();
@@ -65,11 +63,11 @@ class Pong {
     }
 
     update(dtime) {       
-        //{ // update puck position
-        //    const pos = this.params.pos;
-        //    
-        //    quat.fromEuler(this.puck, pos.y, 0, pos.x);
-        //}
+        { // update puck position
+            const pos = this.params.pos;
+            
+            quat.fromEuler(this.mallet, pos.y, 0, pos.x);
+        }
 
         //TODO: do we need both?
         //TODO: move to this
@@ -90,6 +88,9 @@ class Pong {
         let d = quat.pow(quat.create(), this.puckVelocity, dtime);
         quat.multiply(this.puckPosition, this.puckPosition, d);
 
+        // renormalize (error will build up otherwise)
+        quat.normalize(this.puckVelocity, this.puckVelocity);
+        quat.normalize(this.puckPosition, this.puckPosition);
     }
 
     draw(framebuffer) {
@@ -121,16 +122,16 @@ class Pong {
             this.dot.draw();
         }
 
-        // draw the cursor
+        // draw the mallet
 
-        //{ // rotate the puck
-        //    let m = this.uniforms.modelMatrix;
-        //    mat4.fromQuat(m, this.puck);
-        //    mat4.translate(m, m, [0., 0., 1]);
-        //    mat4.scale(m, m, [0.1, 0.1, 0.1]);
-        //    
-        //    this.dot.draw();
-        //}
+        { // rotate the mallet
+            let m = this.uniforms.modelMatrix;
+            mat4.fromQuat(m, this.mallet);
+            mat4.translate(m, m, [0., 0., 1]);
+            mat4.scale(m, m, [0.1, 0.1, 0.1]);
+            
+            this.dot.draw();
+        }
 
     }
 }
