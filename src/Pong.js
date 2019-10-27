@@ -72,14 +72,15 @@ class Pong {
         // let's start at some position
         quat.fromEuler(this.puckPosition, 45, 45, 90);
 
+        this.gravityDirection = quat.create(); //FIXME: as vector?
         this.mallet = quat.create();
 
         this.params = new Parameters("Pong", (change) => {
             onUpdate();
         });
-        this.params.float("puck_weight", 0., 0.0001, 0., 1.);
         this.params.float("gravity", 0.1, 0.0001, 0., 1.);
-        this.params.touch("pos", { x: 45, y: 10}, {x:0, y:0}, {x:360, y:90});
+        this.params.touch("gravityDirection", { x: 0, y: 0}, {x:0, y:0}, {x:360, y:90});
+        this.params.touch("mallet", { x: 45, y: 10}, {x:0, y:0}, {x:360, y:90});
 
         this.uniforms = {
             projectionMatrix: mat4.create(),
@@ -111,16 +112,16 @@ class Pong {
     }
 
     update(dtime) {       
-        { // update puck position
-            const pos = this.params.pos;
-            
-            quat.fromEuler(this.mallet, pos.y, 0, pos.x);
+        { // update from inputs
+            const mallet = this.params.mallet;
+            quat.fromEuler(this.mallet, mallet.y, 0, mallet.x);
+
+            const gravityDirection = this.params.gravityDirection;
+            quat.fromEuler(this.gravityDirection, gravityDirection.y, 0, gravityDirection.x);
         }
 
-        let gravityDirection = this.mallet; // just for testing
-
         let axisPuckPosition = vec3.create();
-        let anglePuckPosition = getGeodesicAxisAngle(axisPuckPosition, gravityDirection, this.puckPosition);
+        let anglePuckPosition = getGeodesicAxisAngle(axisPuckPosition, this.gravityDirection, this.puckPosition);
 
         let deltaAngle = -this.params.gravity * Math.sin(anglePuckPosition) * dtime;
         let deltaV = quat.setAxisAngle(quat.create(), axisPuckPosition, deltaAngle);
@@ -131,20 +132,49 @@ class Pong {
 
         let newPosition = quat.multiply(quat.create(), displacement, this.puckPosition);
 
-        //{ // collision detection with border
-        //    let dist = sqr(quat.dot(this.mallet, this.puckPosition));
-        //    if (dist < 0.5) {
-        //        console.log("collision");
-        //        // did we move away? FIXME: can this be done more elegantly?
-        //        //if (dist > sqr(quat.dot(this.mallet, newPosition))) {
-        //        //    //TODO: reorient with mallet position
-        //        //    let twist = getTwist(quat.create(), [0,0,1], this.puckVelocity);
-        //        //    twist = quat.conjugate(twist, twist);
-        //        //    quat.multiply(this.puckVelocity, this.puckVelocity, twist);
-        //        //    quat.multiply(this.puckVelocity, this.puckVelocity, twist);
-        //        //}
-        //    }
-        //}
+        { // collision detection with horizon
+            let horizonNormal = vec3.fromValues(0,0,1);
+            let newPositionVector = vec3.transformQuat(vec3.create(), horizonNormal, newPosition);
+
+            let cosine = vec3.dot(horizonNormal, newPositionVector);
+
+            //TODO: use puck size for distance
+            if (Math.abs(cosine) < 0.2) {
+                console.log("collision with horizon");
+                // did we move away? FIXME: can this be done more elegantly?
+                //if (dist > sqr(quat.dot(this.mallet, newPosition))) {
+                //    //TODO: reorient with mallet position
+                //    let twist = getTwist(quat.create(), [0,0,1], this.puckVelocity);
+                //    twist = quat.conjugate(twist, twist);
+                //    quat.multiply(this.puckVelocity, this.puckVelocity, twist);
+                //    quat.multiply(this.puckVelocity, this.puckVelocity, twist);
+                //}
+            }
+        }
+
+        { // collision detection with mallet
+            let up = vec3.fromValues(0,0,1); // arbitrary
+            let malletVector = vec3.transformQuat(vec3.create(), up, this.mallet);
+            let newPositionVector = vec3.transformQuat(vec3.create(), up, newPosition);
+
+            let newCosine = vec3.dot(malletVector, newPositionVector);
+
+            //TODO: use puck and mallet sizes for distance
+            if (Math.abs(newCosine) >= 0.97) {
+                // might have a collision, did we move away?
+                //FIXME: can this be done more elegantly?
+                let positionVector = vec3.transformQuat(vec3.create(), up, this.puckPosition);
+                let cosine = vec3.dot(malletVector, positionVector);
+                if (newCosine > cosine) {
+                    //TODO: reorient with mallet position
+                    console.log("collision with puck");
+                    //let twist = getTwist(quat.create(), [0,0,1], this.puckVelocity);
+                    //twist = quat.conjugate(twist, twist);
+                    //quat.multiply(this.puckVelocity, this.puckVelocity, twist);
+                    //quat.multiply(this.puckVelocity, this.puckVelocity, twist);
+                }
+            }
+        }
 
         // renormalize (error will build up otherwise)
         quat.normalize(this.puckVelocity, this.puckVelocity);
