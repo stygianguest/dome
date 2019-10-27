@@ -14,6 +14,54 @@ function toRadian(angleDegrees) {
     return angleDegrees * (Math.PI / 180.0);
 }
 
+function sqr(a) { return a*a; }
+
+//TODO: move to matrixgl lib
+function getTwist(out, axis, a) {
+  let w = vec3.fromValues(a[0], a[1], a[2]);
+  let cosine = vec3.dot(axis, w);
+
+  if (Math.abs(cosine) < 0.00001) {
+    // close to zero: no twist around given axis, return identity
+    return quat.identity(out);
+  }
+
+  w = vec3.scale(w, axis, cosine);
+
+  out[0] = w[0];
+  out[1] = w[1];
+  out[2] = w[2];
+  out[3] = a[3];
+
+  return quat.normalize(out, out)
+}
+
+function getGeodesicAxisAngle(axis, a, b) {
+    let up = vec3.fromValues(0,0,1);
+    let normalA = vec3.transformQuat(vec3.create(), up, a);
+    let normalB = vec3.transformQuat(vec3.create(), up, b);
+
+    let cosine = vec3.dot(normalA, normalB);
+
+    //TODO:
+    //if (Math.abs(cosine)-0.5*Math.PI < 0.0001) {
+    //    // without rotation, any axis will do
+    //    vec3.set(axis, 0, 0, 1);
+    //    console.log("zero angle");
+    //    return 0;
+    //}
+
+    vec3.cross(axis, normalA, normalB);
+
+    // clamping to avoid NaNs from acos
+    cosine = Math.min(1, cosine);
+    cosine = Math.max(-1, cosine);
+
+    let angle = Math.acos(cosine);
+
+    return angle;
+}
+
 class Pong {
     constructor(renderer, onUpdate = () => {}) {
         this.renderer = renderer;
@@ -22,7 +70,7 @@ class Pong {
         this.puckVelocity = quat.create();
 
         // let's start at some position
-        quat.fromEuler(this.puckPosition, 90, 0, 0);
+        quat.fromEuler(this.puckPosition, 45, 45, 90);
 
         this.mallet = quat.create();
 
@@ -31,7 +79,7 @@ class Pong {
         });
         this.params.float("puck_weight", 0., 0.0001, 0., 1.);
         this.params.float("gravity", 0.1, 0.0001, 0., 1.);
-        this.params.touch("pos", { x: 0, y: 0}, {x:0, y:0}, {x:360, y:90});
+        this.params.touch("pos", { x: 45, y: 10}, {x:0, y:0}, {x:360, y:90});
 
         this.uniforms = {
             projectionMatrix: mat4.create(),
@@ -69,28 +117,38 @@ class Pong {
             quat.fromEuler(this.mallet, pos.y, 0, pos.x);
         }
 
-        //TODO: do we need both?
-        //TODO: move to this
-        let gravityDirection = quat.create(); //move to this
-        let invGravityDirection = quat.conjugate(quat.create(), gravityDirection);
+        let gravityDirection = this.mallet; // just for testing
 
-        let f = quat.multiply(quat.create(), invGravityDirection, this.puckPosition);
+        let axisPuckPosition = vec3.create();
+        let anglePuckPosition = getGeodesicAxisAngle(axisPuckPosition, gravityDirection, this.puckPosition);
 
-        let axis = vec3.create();
-        let angle = quat.getAxisAngle(axis, this.puckPosition);
+        let deltaAngle = -this.params.gravity * Math.sin(anglePuckPosition) * dtime;
+        let deltaV = quat.setAxisAngle(quat.create(), axisPuckPosition, deltaAngle);
 
-        let angle_f = -this.params.gravity * Math.sin(angle) * dtime;
+        quat.multiply(this.puckVelocity, deltaV, this.puckVelocity);
 
-        quat.setAxisAngle(f, axis, angle_f);
+        let displacement = quat.pow(quat.create(), this.puckVelocity, dtime);
 
-        quat.multiply(this.puckVelocity, this.puckVelocity, f);
+        let newPosition = quat.multiply(quat.create(), displacement, this.puckPosition);
 
-        let d = quat.pow(quat.create(), this.puckVelocity, dtime);
-        quat.multiply(this.puckPosition, this.puckPosition, d);
+        //{ // collision detection with border
+        //    let dist = sqr(quat.dot(this.mallet, this.puckPosition));
+        //    if (dist < 0.5) {
+        //        console.log("collision");
+        //        // did we move away? FIXME: can this be done more elegantly?
+        //        //if (dist > sqr(quat.dot(this.mallet, newPosition))) {
+        //        //    //TODO: reorient with mallet position
+        //        //    let twist = getTwist(quat.create(), [0,0,1], this.puckVelocity);
+        //        //    twist = quat.conjugate(twist, twist);
+        //        //    quat.multiply(this.puckVelocity, this.puckVelocity, twist);
+        //        //    quat.multiply(this.puckVelocity, this.puckVelocity, twist);
+        //        //}
+        //    }
+        //}
 
         // renormalize (error will build up otherwise)
         quat.normalize(this.puckVelocity, this.puckVelocity);
-        quat.normalize(this.puckPosition, this.puckPosition);
+        quat.normalize(this.puckPosition, newPosition);
     }
 
     draw(framebuffer) {
